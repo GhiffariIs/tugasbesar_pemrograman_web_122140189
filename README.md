@@ -48,3 +48,11 @@ source venv/bin/activate  # Untuk Linux/macOS
 venv\Scripts\activate     # Untuk Windows
 pip install -r requirements.txt
 pserve development.ini
+```
+
+### Frontend
+```bash
+cd frontend/
+npm install
+npm start
+```
