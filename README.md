@@ -1,58 +1,116 @@
-# 🌐 Judul Aplikasi Web
+# Aturmation
 
-Deskripsi singkat mengenai aplikasi Anda, misalnya:
-
-> Aplikasi Web Manajemen Tugas yang memungkinkan pengguna untuk membuat, melihat, memperbarui, dan menghapus daftar tugas harian mereka. Dibangun menggunakan Python Pyramid (Backend) dan React JS (Frontend) dengan antarmuka responsif.
-
----
-
-## 🚀 Fitur Aplikasi
-
-- Autentikasi pengguna (Basic Auth)
-- Operasi CRUD untuk entitas (misalnya: tugas, pengguna, produk, dll.)
-- UI responsif dan modern
-- Navigasi antar halaman menggunakan React Router
-- State management dengan Redux Toolkit / Context API
-- Komunikasi frontend-backend via Axios / Fetch
+## 📌 Deskripsi
+**Aturmation** adalah aplikasi berbasis web yang dirancang untuk mempermudah pengelolaan stok barang secara real-time. Dengan fitur CRUD (Create, Read, Update, Delete) pada entitas Produk dan Kategori, aplikasi ini membantu bisnis dalam memantau stok barang, melakukan pencatatan transaksi, dan menghasilkan laporan inventaris secara efisien.
 
 ---
 
-## ⚙️ Teknologi & Dependensi
-
-### 🔧 Backend (Python Pyramid)
-- `pyramid`
-- `waitress`
-- `pyramid_jinja2`
-- `requests`
-- `pytest` (untuk testing)
-- `coverage` (untuk coverage testing)
-
-### 🎨 Frontend (React JS)
-- `react`
-- `react-dom`
-- `react-router-dom`
-- `redux` / `@reduxjs/toolkit` / `react-redux` atau `Context API`
-- `axios`
-- `bootstrap` / `tailwindcss` / `@mui/material` (pilih salah satu)
+## 🚀 Fitur Utama
+- **CRUD Produk dan Kategori:** Kelola data produk dan kategori secara lengkap.
+- **Laporan Stok Barang:** Tampilkan data stok dalam bentuk tabel dan grafik.
+- **Pencatatan Transaksi Barang:** Rekam pemasukan dan pengeluaran stok.
+- **Notifikasi Stok Rendah:** Peringatan saat stok mencapai batas minimal.
+- **Pencarian Produk Cepat:** Fitur pencarian instan berdasarkan nama atau kode produk.
+- **Autentikasi dan Keamanan:** Proteksi akses menggunakan JWT.
 
 ---
 
-## 🛠️ Instalasi & Menjalankan Aplikasi
-[Link Repository](https://github.com/GhiffariIs/tugasbesar_pemrograman_web_122140189)
+## 🛠️ Teknologi yang Digunakan
+### Frontend
+- React JS (Vite)
+- TailwindCSS
+- React Router DOM
+- Axios
 
 ### Backend
-```bash
-cd backend/
-python -m venv venv
-source venv/bin/activate  # Untuk Linux/macOS
-venv\Scripts\activate     # Untuk Windows
-pip install -r requirements.txt
-pserve development.ini
+- Python Pyramid (RESTful API)
+- PostgreSQL
+- JWT (JSON Web Token)
+- Unit Testing (60% Coverage)
+
+### Version Control
+- Git & GitHub
+
+---
+
+## 🗃️ Database Structure
+```
+Tabel Produk
+- id (Primary Key)
+- nama_produk
+- kategori_id (Foreign Key)
+- stok
+- harga
+- deskripsi
+
+Tabel Kategori
+- id (Primary Key)
+- nama_kategori
+
+Tabel Transaksi
+- id (Primary Key)
+- produk_id (Foreign Key)
+- jumlah
+- jenis_transaksi (masuk/keluar)
+- tanggal_transaksi
 ```
 
-### Frontend
-```bash
-cd frontend/
-npm install
-npm start
-```
+---
+
+## 🔄 API Endpoint
+| Method | Endpoint            | Deskripsi                |
+|---------|----------------------|--------------------------|
+| GET     | `/api/products`     | Menampilkan semua produk |
+| GET     | `/api/products/:id` | Menampilkan detail produk|
+| POST    | `/api/products`     | Menambah produk baru     |
+| PUT     | `/api/products/:id` | Mengedit data produk     |
+| DELETE  | `/api/products/:id` | Menghapus produk         |
+
+| Method | Endpoint              | Deskripsi                |
+|---------|----------------------|--------------------------|
+| GET     | `/api/categories`    | Menampilkan semua kategori |
+| POST    | `/api/categories`    | Menambah kategori baru     |
+| PUT     | `/api/categories/:id`| Mengedit data kategori     |
+| DELETE  | `/api/categories/:id`| Menghapus kategori         |
+
+---
+
+## 🔧 Cara Menjalankan Aplikasi
+1. Clone repository:
+   ```bash
+   git clone https://github.com/username/nim-ims.git
+   cd nim-ims
+   ```
+
+2. Setup backend:
+   ```bash
+   cd backend
+   pip install -r requirements.txt
+   python3 main.py
+   ```
+
+3. Setup frontend:
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
+
+4. Buka di browser:
+   ```
+   http://localhost:5173
+   ```
+
+---
+
+## 📌 Dokumentasi Tambahan
+- Link Dokumentasi API: [Swagger Docs](http://localhost:8000/docs)
+- Link GitHub Repository: [Aturmation](https://github.com/GhiffariIs/tugasbesar_pemrograman_web_122140189)
+
+---
+
+## 📞 Kontak
+- Nama: [Nama Kamu]
+- Email: [Email Kamu]
+- GitHub: [Username GitHub Kamu]
+""
