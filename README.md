@@ -78,7 +78,7 @@ Tabel Transaksi
 ## 🔧 Cara Menjalankan Aplikasi
 1. Clone repository:
    ```bash
-   git clone https://github.com/username/nim-ims.git
+   git clone https://github.com/GhiffariIs/tugasbesar_pemrograman_web_122140189
    cd nim-ims
    ```
 
@@ -91,6 +91,8 @@ Tabel Transaksi
 
 3. Setup frontend:
    ```bash
+   npm create vite@latest
+
    cd frontend
    npm install
    npm run dev
@@ -110,7 +112,8 @@ Tabel Transaksi
 ---
 
 ## 📞 Kontak
-- Nama: [Nama Kamu]
-- Email: [Email Kamu]
-- GitHub: [Username GitHub Kamu]
+- Nama: Muhammad Ghiffari Iskandar
+- NIM: 122140189
+- GitHub: GhiffariIs
+- Kelas: Pemrograman Web RB
 ""
