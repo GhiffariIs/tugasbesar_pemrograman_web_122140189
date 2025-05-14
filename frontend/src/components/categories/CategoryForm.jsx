@@ -1,108 +1,119 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react';
 import {
+  Grid,
+  TextField,
   Box,
   Button,
-  FormControl,
-  FormLabel,
-  Input,
-  VStack,
-  useToast,
-  Textarea
-} from '@chakra-ui/react'
+  CircularProgress
+} from '@mui/material';
 
-const CategoryForm = ({ onSubmit, initialData = null }) => {
+const CategoryForm = ({ category, onSave, loading, isEdit = false }) => {
   const [formData, setFormData] = useState({
-    name: initialData?.name || '',
-    description: initialData?.description || ''
-  })
-  const [isLoading, setIsLoading] = useState(false)
-  const toast = useToast()
-
+    name: '',
+    description: ''
+  });
+  
+  const [errors, setErrors] = useState({});
+  
+  useEffect(() => {
+    if (category && isEdit) {
+      setFormData({
+        name: category.name || '',
+        description: category.description || ''
+      });
+    }
+  }, [category, isEdit]);
+  
   const handleChange = (e) => {
-    const { name, value } = e.target
+    const { name, value } = e.target;
+    
     setFormData(prev => ({
       ...prev,
       [name]: value
-    }))
-  }
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setIsLoading(true)
-
-    try {
-      await onSubmit(formData)
-      toast({
-        title: `Category ${initialData ? 'updated' : 'created'} successfully`,
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      })
-      
-      if (!initialData) {
-        setFormData({
-          name: '',
-          description: ''
-        })
-      }
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: error.message,
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      })
-    } finally {
-      setIsLoading(false)
+    }));
+    
+    // Clear validation error when field changes
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
     }
-  }
-
+  };
+  
+  const validateForm = () => {
+    const newErrors = {};
+    
+    if (!formData.name.trim()) {
+      newErrors.name = 'Nama kategori tidak boleh kosong';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+  
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    
+    if (validateForm()) {
+      onSave(formData);
+    }
+  };
+  
   return (
-    <Box
-      as="form"
-      onSubmit={handleSubmit}
-      p={6}
-      bg="white"
-      borderRadius="lg"
-      boxShadow="sm"
-      _dark={{
-        bg: 'gray.700'
-      }}
-    >
-      <VStack spacing={4}>
-        <FormControl isRequired>
-          <FormLabel>Category Name</FormLabel>
-          <Input
+    <Box component="form" onSubmit={handleSubmit} noValidate>
+      <Grid container spacing={2}>
+        <Grid item xs={12}>
+          <TextField
+            fullWidth
+            required
+            id="name"
             name="name"
+            label="Nama Kategori"
             value={formData.name}
             onChange={handleChange}
-            placeholder="Enter category name"
+            error={Boolean(errors.name)}
+            helperText={errors.name}
+            disabled={loading}
+            autoFocus
           />
-        </FormControl>
-
-        <FormControl>
-          <FormLabel>Description</FormLabel>
-          <Textarea
+        </Grid>
+        
+        <Grid item xs={12}>
+          <TextField
+            fullWidth
+            id="description"
             name="description"
+            label="Deskripsi"
             value={formData.description}
             onChange={handleChange}
-            placeholder="Enter category description"
-            resize="vertical"
+            disabled={loading}
+            multiline
+            rows={3}
           />
-        </FormControl>
-
-        <Button
-          type="submit"
-          colorScheme="blue"
-          width="full"
-          isLoading={isLoading}
-        >
-          {initialData ? 'Update Category' : 'Create Category'}
-        </Button>
-      </VStack>
+        </Grid>
+        
+        <Grid item xs={12}>
+          <Button
+            type="submit"
+            variant="contained"
+            fullWidth
+            size="large"
+            disabled={loading}
+            sx={{ mt: 1 }}
+          >
+            {loading ? (
+              <CircularProgress size={24} />
+            ) : isEdit ? (
+              'Simpan Perubahan'
+            ) : (
+              'Tambah Kategori'
+            )}
+          </Button>
+        </Grid>
+      </Grid>
     </Box>
-  )
-}
+  );
+};
 
-export default CategoryForm
+export default CategoryForm;

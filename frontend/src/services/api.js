@@ -1,86 +1,38 @@
-import axios from 'axios'
+import axios from 'axios';
 
-// Create axios instance with default config
+const BASE_URL = 'http://localhost:6543/api'; // Update with your Pyramid API URL
+
+// Create axios instance with base URL
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: BASE_URL,
   headers: {
     'Content-Type': 'application/json'
   }
-})
+});
 
-// Add token to requests if available
+// Add request interceptor to include auth token in requests
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token')
+    const token = localStorage.getItem('token');
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`
+      config.headers.Authorization = `Bearer ${token}`;
     }
-    return config
+    return config;
   },
-  (error) => {
-    return Promise.reject(error)
-  }
-)
+  (error) => Promise.reject(error)
+);
 
-// API endpoints
-export const authApi = {
-  login: (data) => api.post('/auth/login', data),
-  register: (data) => api.post('/auth/register', data),
-  getProfile: () => api.get('/auth/me')
-}
-
-export const productsApi = {
-  getAll: () => api.get('/products'),
-  getById: (id) => api.get(`/products/${id}`),
-  create: (data) => api.post('/products', data),
-  update: (id, data) => api.put(`/products/${id}`, data),
-  delete: (id) => api.delete(`/products/${id}`)
-}
-
-export const categoriesApi = {
-  getAll: () => api.get('/categories'),
-  getById: (id) => api.get(`/categories/${id}`),
-  create: (data) => api.post('/categories', data),
-  update: (id, data) => api.put(`/categories/${id}`, data),
-  delete: (id) => api.delete(`/categories/${id}`)
-}
-
-export const inventoryApi = {
-  updateStock: (id, quantity) => api.patch(`/products/${id}/stock`, { quantity }),
-  getLowStock: () => api.get('/products/low-stock'),
-  getStockHistory: (id) => api.get(`/products/${id}/stock-history`)
-}
-
-export const usersApi = {
-  getAll: () => api.get('/users'),
-  getById: (id) => api.get(`/users/${id}`),
-  create: (data) => api.post('/users', data),
-  update: (id, data) => api.put(`/users/${id}`, data),
-  delete: (id) => api.delete(`/users/${id}`),
-  updateStatus: (id, isActive) => api.patch(`/users/${id}/status`, { isActive })
-}
-
-export const stockApi = {
-  getStockLevels: () => api.get('/inventory/stock-levels'),
-  updateStock: (productId, quantity, type = 'set') => 
-    api.patch(`/inventory/stock/${productId}`, { quantity, type }),
-  getLowStock: (threshold) => api.get('/inventory/low-stock', { params: { threshold }}),
-  getStockHistory: (productId, timeRange) => 
-    api.get(`/inventory/stock-history/${productId}`, { params: { timeRange }}),
-  getStockReport: (timeRange = 'week') => 
-    api.get('/inventory/report', { params: { timeRange }})
-}
-
-// Error handling
+// Add response interceptor to handle common error scenarios
 api.interceptors.response.use(
-  (response) => response.data,
+  (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token')
-      window.location.href = '/login'
+    // Handle 401 Unauthorized errors
+    if (error.response && error.response.status === 401) {
+      localStorage.removeItem('token');
+      window.location = '/login';
     }
-    return Promise.reject(error.response?.data || error.message)
+    return Promise.reject(error);
   }
-)
+);
 
-export default api
+export default api;
