@@ -30,15 +30,18 @@ import { isValidEmail } from '../../utils/formatters';
 import { styled } from '@mui/material/styles';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
-  padding: theme.spacing(4),
+  padding: theme.spacing(4, 3),
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
-  maxWidth: 600,
-  margin: '0 auto',
+  width: '100%',
+  maxWidth: 500,
   boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-  borderRadius: 16,
+  borderRadius: 12,
   border: '1px solid rgba(0, 0, 0, 0.05)',
+  [theme.breakpoints.down('sm')]: {
+    padding: theme.spacing(3, 2),
+  },
 }));
 
 const StyledAvatar = styled('div')(({ theme }) => ({
@@ -57,16 +60,24 @@ const StyledAvatar = styled('div')(({ theme }) => ({
 
 const StyledForm = styled('form')(({ theme }) => ({
   width: '100%',
-  marginTop: theme.spacing(2),
+  marginTop: theme.spacing(1),
+  '& .MuiTextField-root': {
+    marginBottom: theme.spacing(2),
+    '&:last-child': {
+      marginBottom: 0
+    }
+  },
 }));
 
 const StyledSubmitButton = styled(Button)(({ theme }) => ({
-  margin: theme.spacing(3, 0, 2),
-  padding: theme.spacing(1.5),
-  borderRadius: 12,
+  margin: theme.spacing(2, 0, 1),
+  padding: theme.spacing(1.25),
+  borderRadius: 8,
   textTransform: 'none',
   fontWeight: 600,
   fontSize: '1rem',
+  width: '100%',
+  height: 48,
 }));
 
 const StyledFooter = styled('div')(({ theme }) => ({
@@ -175,205 +186,197 @@ const RegisterPage = () => {
   };
 
   return (
-    <Container component="main" maxWidth="md">
-      <Box
-        sx={{
-          minHeight: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          py: 4,
-        }}
-      >
-        <Box sx={{ textAlign: 'center', mb: 4 }}>
-          <Typography 
-            variant="h4" 
-            component="h1" 
-            sx={{ 
-              fontWeight: 700,
-              background: 'linear-gradient(45deg, #1976d2 30%, #21CBF3 90%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              mb: 1,
-            }}
-          >
-            AturMation
-          </Typography>
-          <Typography variant="subtitle1" color="text.secondary">
-            Buat akun baru
-          </Typography>
-        </Box>
-
+    <Box
+      component="main"
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        py: { xs: 2, sm: 4 },
+        px: { xs: 2, sm: 3 },
+      }}
+    >
+      <Container maxWidth="sm" sx={{ width: '100%' }}>
         <StyledPaper elevation={3}>
+          <Box>
           <StyledAvatar>
-            <PersonAddIcon />
-          </StyledAvatar>
-          
-          <Typography component="h1" variant="h5" sx={{ mt: 2, fontWeight: 600, textAlign: 'center' }}>
-            Daftar Akun Baru
-          </Typography>
-          
-          <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 1, mb: 3 }}>
-            Isi formulir di bawah untuk membuat akun baru
-          </Typography>
+              <PersonAddIcon />
+            </StyledAvatar>
+          </Box>
+          <Box sx={{ width: '100%', textAlign: 'center', mb: 4 }}>
+            <Typography 
+              variant="h5" 
+              component="h1" 
+              sx={{ 
+                fontWeight: 700,
+                mt: 2,
+                mb: 1,
+                color: 'text.primary',
+              }}
+            >
+              Buat Akun Baru
+            </Typography>
+            <Typography variant="subtitle1" color="text.secondary">
+              Buat akun baru
+            </Typography>
+          </Box>
 
           {serverError && (
-            <Alert severity="error" sx={{ width: '100%', mb: 3 }}>
+            <Alert 
+              severity="error" 
+              sx={{ 
+                mb: 2,
+                '& .MuiAlert-message': {
+                  width: '100%',
+                }
+              }}
+            >
               {serverError}
             </Alert>
           )}
-
           <StyledForm onSubmit={handleSubmit}>
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  autoComplete="name"
-                  name="name"
-                  required
-                  fullWidth
-                  id="name"
-                  label="Nama Lengkap"
-                  autoFocus
-                  value={formData.name}
-                  onChange={handleChange}
-                  error={!!errors.name}
-                  helperText={errors.name}
-                  disabled={loading}
-                  variant="outlined"
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <PersonOutlineIcon color="action" />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  required
-                  fullWidth
-                  id="username"
-                  label="Username"
-                  name="username"
-                  autoComplete="username"
-                  value={formData.username}
-                  onChange={handleChange}
-                  error={!!errors.username}
-                  helperText={errors.username}
-                  disabled={loading}
-                  variant="outlined"
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <PersonOutlineIcon color="action" />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  required
-                  fullWidth
-                  id="email"
-                  label="Alamat Email"
-                  name="email"
-                  autoComplete="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  error={!!errors.email}
-                  helperText={errors.email}
-                  disabled={loading}
-                  variant="outlined"
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <EmailOutlinedIcon color="action" />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  required
-                  fullWidth
-                  name="password"
-                  label="Password"
-                  type={showPassword ? 'text' : 'password'}
-                  id="password"
-                  autoComplete="new-password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  error={!!errors.password}
-                  helperText={errors.password}
-                  disabled={loading}
-                  variant="outlined"
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <LockOutlinedIcon color="action" />
-                      </InputAdornment>
-                    ),
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <IconButton
-                          aria-label="toggle password visibility"
-                          onClick={() => setShowPassword(!showPassword)}
-                          edge="end"
-                          size="large"
-                        >
-                          {showPassword ? <VisibilityOff /> : <Visibility />}
-                        </IconButton>
-                      </InputAdornment>
-                    )
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  required
-                  fullWidth
-                  name="confirmPassword"
-                  label="Konfirmasi Password"
-                  type={showPassword ? 'text' : 'password'}
-                  id="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  error={!!errors.confirmPassword}
-                  helperText={errors.confirmPassword}
-                  disabled={loading}
-                  variant="outlined"
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <LockOutlinedIcon color="action" />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </Grid>
-            </Grid>
-            
+            <TextField
+              fullWidth
+              label="Nama Lengkap"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              error={!!errors.name}
+              helperText={errors.name}
+              variant="outlined"
+              size="small"
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <PersonOutlineIcon color="action" />
+                  </InputAdornment>
+                ),
+              }}
+            />
+
+            <TextField
+              fullWidth
+              label="Username"
+              name="username"
+              value={formData.username}
+              onChange={handleChange}
+              error={!!errors.username}
+              helperText={errors.username}
+              variant="outlined"
+              size="small"
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <PersonOutlineIcon color="action" />
+                  </InputAdornment>
+                ),
+              }}
+            />
+
+            <TextField
+              fullWidth
+              label="Email"
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleChange}
+              error={!!errors.email}
+              helperText={errors.email}
+              variant="outlined"
+              size="small"
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <EmailOutlinedIcon color="action" />
+                  </InputAdornment>
+                ),
+              }}
+            />
+
+            <TextField
+              fullWidth
+              label="Password"
+              name="password"
+              type={showPassword ? 'text' : 'password'}
+              value={formData.password}
+              onChange={handleChange}
+              error={!!errors.password}
+              helperText={errors.password}
+              variant="outlined"
+              size="small"
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <LockOutlinedIcon color="action" />
+                  </InputAdornment>
+                ),
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      size="small"
+                      aria-label="toggle password visibility"
+                      onClick={() => setShowPassword(!showPassword)}
+                      edge="end"
+                    >
+                      {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
+
+            <TextField
+              fullWidth
+              label="Konfirmasi Password"
+              name="confirmPassword"
+              type={showPassword ? 'text' : 'password'}
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              error={!!errors.confirmPassword}
+              helperText={errors.confirmPassword}
+              variant="outlined"
+              size="small"
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <LockOutlinedIcon color="action" />
+                  </InputAdornment>
+                ),
+              }}
+            />
+
+            {serverError && (
+              <Alert 
+                severity="error" 
+                sx={{ 
+                  mt: 1, 
+                  mb: 1,
+                  '& .MuiAlert-message': {
+                    width: '100%',
+                    textAlign: 'left',
+                  }
+                }}
+              >
+                {serverError}
+              </Alert>
+            )}
+
             <StyledSubmitButton
               type="submit"
-              fullWidth
               variant="contained"
+              color="primary"
               disabled={loading}
-              size="large"
+              startIcon={loading ? <CircularProgress size={20} color="inherit" /> : null}
             >
-              {loading ? <CircularProgress size={24} /> : 'Daftar Sekarang'}
+              {loading ? 'Mendaftar...' : 'Daftar'}
             </StyledSubmitButton>
 
             <StyledFooter>
               <Typography variant="body2" color="text.secondary">
                 Sudah punya akun?{' '}
-                <MuiLink 
-                  component={Link} 
-                  to="/login" 
-                  sx={{ textDecoration: 'none', fontWeight: 500 }}
-                >
+                <MuiLink component={Link} to="/login" color="primary">
                   Masuk di sini
                 </MuiLink>
               </Typography>
@@ -391,8 +394,8 @@ const RegisterPage = () => {
             Kembali ke Beranda
           </Button>
         </Box>
-      </Box>
-    </Container>
+      </Container>
+    </Box>
   );
 };
 
