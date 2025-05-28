@@ -15,6 +15,9 @@ requires = [
     'psycopg2-binary', # Driver PostgreSQL
     'pyramid_tm', # Untuk manajemen transaksi (opsional, tapi direkomendasikan dengan SQLAlchemy)
     'zope.sqlalchemy', # Untuk integrasi SQLAlchemy dengan pyramid_tm
+    'passlib', # <--- TAMBAHKAN INI
+    'pyramid_sqlalchemy',
+    'pyramid_restful', # <--- TAMBAHKAN INI
     # Tambahkan dependensi lain di sini
 ]
 

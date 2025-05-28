@@ -6,8 +6,7 @@ from sqlalchemy import (
     String,  # Bisa juga digunakan untuk string
     DateTime
 )
-from .meta import Base # Impor Base dari meta.py jika Anda memisahkannya
-                       # atau dari . import Base jika Base ada di models/__init__.py
+from . import Base      # Impor Base dari models/__init__.py
 import datetime
 
 class User(Base):

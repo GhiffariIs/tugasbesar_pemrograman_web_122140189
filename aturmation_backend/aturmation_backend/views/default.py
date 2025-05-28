@@ -1,9 +1,9 @@
 from pyramid.view import view_config
 from pyramid.response import Response
-from pyramid.exceptions import HTTPNotFound
-from pyramid.httpexceptions import HTTPForbidden
-from .models.user import User
-from .security import authenticate
+from pyramid.httpexceptions import HTTPForbidden # Untuk proteksi endpoint
+
+# from .models.user import User # Hapus atau komentari baris ini
+from ..models.user import User  # Impor dari direktori models yang sejajar
 
 @view_config(route_name='home', renderer='json', request_method='GET')
 def home_view(request):
