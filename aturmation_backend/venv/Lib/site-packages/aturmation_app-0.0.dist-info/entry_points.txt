@@ -1,0 +1,5 @@
+[console_scripts]
+initialize_aturmation_db = aturmation_app.scripts.initializedb:main
+
+[paste.app_factory]
+main = aturmation_app:main

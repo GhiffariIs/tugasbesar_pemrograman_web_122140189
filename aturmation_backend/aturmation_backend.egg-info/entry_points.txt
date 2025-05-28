@@ -1,5 +1,0 @@
-[console_scripts]
-initialize_aturmation_backend_db = aturmation_backend.scripts.initializedb:main
-
-[paste.app_factory]
-main = aturmation_backend:main

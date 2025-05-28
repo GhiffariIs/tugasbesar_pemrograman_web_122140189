@@ -1,7 +1,0 @@
-include *.py
-include requirements.txt
-include development.ini
-include production.ini
-include README.md
-recursive-include aturmation_backend/templates *
-recursive-include tests *

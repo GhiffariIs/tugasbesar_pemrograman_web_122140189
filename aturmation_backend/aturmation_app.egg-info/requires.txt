@@ -1,0 +1,14 @@
+pyramid
+pyramid_jinja2
+waitress
+psycopg2-binary
+sqlalchemy
+pyramid_tm
+zope.sqlalchemy
+passlib
+bcrypt
+
+[dev]
+pyramid_debugtoolbar
+pytest
+pytest-cov

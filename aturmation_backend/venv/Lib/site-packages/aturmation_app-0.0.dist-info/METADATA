@@ -1,0 +1,20 @@
+Metadata-Version: 2.4
+Name: aturmation_app
+Version: 0.0
+Summary: Aturmation Backend Application
+Requires-Dist: pyramid
+Requires-Dist: pyramid_jinja2
+Requires-Dist: waitress
+Requires-Dist: psycopg2-binary
+Requires-Dist: sqlalchemy
+Requires-Dist: pyramid_tm
+Requires-Dist: zope.sqlalchemy
+Requires-Dist: passlib
+Requires-Dist: bcrypt
+Provides-Extra: dev
+Requires-Dist: pyramid_debugtoolbar; extra == "dev"
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: pytest-cov; extra == "dev"
+Dynamic: provides-extra
+Dynamic: requires-dist
+Dynamic: summary
