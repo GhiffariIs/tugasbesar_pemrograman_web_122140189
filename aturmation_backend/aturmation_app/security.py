@@ -9,15 +9,33 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Fungsi untuk mendapatkan user dari database berdasarkan username
 def get_user(username, request):
-    return request.dbsession.query(User).filter_by(username=username).first()
+    # Tambahkan print di sini untuk memastikan fungsi ini dipanggil
+    print(f"[DEBUG] get_user called for: {username}")
+    user = request.dbsession.query(User).filter_by(username=username).first()
+    if user:
+        print(f"[DEBUG] User found: {user.username}")
+    else:
+        print(f"[DEBUG] User NOT found: {username}")
+    return user
 
 # Callback untuk BasicAuthAuthenticationPolicy
 def basic_auth_check(username, password, request):
+    print(f"\n[DEBUG] basic_auth_check called with username: '{username}', password: '{password}'") # Debug 1
     user = get_user(username, request)
-    if user and user.check_password(password):
-        # Kembalikan daftar principals jika autentikasi berhasil
-        # 'g:user' adalah contoh group, bisa disesuaikan
-        return [f'user:{user.id}', 'g:user']
+    if user:
+        print(f"[DEBUG] User object retrieved for {username}: {user}") # Debug 2
+        password_check_result = user.check_password(password)
+        print(f"[DEBUG] user.check_password('{password}') result: {password_check_result}") # Debug 3
+        if password_check_result:
+            principals = [f'user:{user.id}', 'g:user']
+            print(f"[DEBUG] Authentication SUCCESSFUL for {username}. Principals returned: {principals}") # Debug 4
+            return principals
+        else:
+            print(f"[DEBUG] Password check FAILED for {username}.") # Debug 5
+    else:
+        print(f"[DEBUG] User {username} not found in database during auth check.") # Debug 6
+
+    print(f"[DEBUG] Authentication FAILED for {username}. Returning None.") # Debug 7
     return None
 
 class RootACL(object):

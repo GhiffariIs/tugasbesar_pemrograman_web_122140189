@@ -1,7 +1,7 @@
 from pyramid.view import view_config
 from pyramid.response import Response
 from pyramid.httpexceptions import HTTPBadRequest, HTTPCreated
-from sqlalchemy.exc import IntegrityError # Untuk menangani username duplikat
+from sqlalchemy.exc import IntegrityError, DBAPIError # Tambahkan DBAPIError di sini
 
 from ..models.user import User
 
