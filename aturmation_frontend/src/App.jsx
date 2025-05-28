@@ -21,6 +21,7 @@ import Dashboard from './components/Dashboard';
 import ProductList from './components/products/ProductList';
 import CategoryList from './components/categories/CategoryList';
 import TransactionList from './components/transactions/TransactionList';
+import SettingsPage from './components/settings/SettingsPage';
 import LandingPage from './components/landing/LandingPage';
 import AboutPage from './components/landing/AboutPage';
 
@@ -121,6 +122,14 @@ const App = () => {
               <ProtectedRoute>
                 <MainLayout>
                   <TransactionList />
+                </MainLayout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/app/settings" element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <SettingsPage />
                 </MainLayout>
               </ProtectedRoute>
             } />

@@ -114,6 +114,7 @@ const MainLayout = ({ children }) => {
     { text: 'Kategori', icon: <CategoryIcon />, path: '/app/categories' },
     { text: 'Transaksi', icon: <TransactionsIcon />, path: '/app/transactions' },
     { text: 'Laporan', icon: <ReportIcon />, path: '/app/reports' },
+    { text: 'Pengaturan', icon: <SettingsIcon />, path: '/app/settings' },
   ];
 
   return (
@@ -231,28 +232,6 @@ const MainLayout = ({ children }) => {
               />
             </ListItemButton>
           ))}
-        </List>
-        <Divider />
-        <List>
-          <ListItemButton
-            sx={{
-              minHeight: 48,
-              justifyContent: open ? 'initial' : 'center',
-              px: 2.5,
-            }}
-            onClick={() => handleNavigate('/settings')}
-          >
-            <ListItemIcon
-              sx={{
-                minWidth: 0,
-                mr: open ? 3 : 'auto',
-                justifyContent: 'center',
-              }}
-            >
-              <SettingsIcon />
-            </ListItemIcon>
-            <ListItemText primary="Pengaturan" sx={{ opacity: open ? 1 : 0 }} />
-          </ListItemButton>
         </List>
       </Drawer>
       

@@ -196,7 +196,7 @@ const Dashboard = () => {
         Dashboard
       </Typography>
       
-      <Grid container spacing={3}>
+      <Grid container spacing={3} sx={{ mb: 6, display: 'grid', gap: 2, gridTemplateColumns: 'repeat(2, 1fr)'}}>
         {/* Summary Cards */}
         <Grid item xs={12} sm={6} md={3}>
           <Paper
