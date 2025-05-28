@@ -9,7 +9,12 @@ def includeme(config):
     config.set_root_factory(RootFactory)
     
     # Enable CORS for all routes
-    config.add_cors_preflight_handler()
+    config.add_cors_preflight_handler(
+    context=None,
+    allow_origins=('*',),
+    allow_methods=('GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'),
+    allow_headers=('Content-Type', 'Authorization')
+    )
     
     # Authentication routes
     config.add_route('login', '/api/login', permission=NO_PERMISSION_REQUIRED)
