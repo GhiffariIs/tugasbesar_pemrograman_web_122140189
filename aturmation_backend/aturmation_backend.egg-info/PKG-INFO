@@ -1,0 +1,90 @@
+Metadata-Version: 2.1
+Name: aturmation-backend
+Version: 0.0
+Summary: Backend untuk Aturmation
+Home-page: 
+Author: Nama Anda
+Author-email: email@anda.com
+Keywords: web pyramid pylons sqlalchemy
+Classifier: Programming Language :: Python
+Classifier: Framework :: Pyramid
+Classifier: Topic :: Internet :: WWW/HTTP
+Classifier: Topic :: Internet :: WWW/HTTP :: WSGI :: Application
+Provides-Extra: testing
+
+# Aturmation Backend
+
+Aturmation Backend is a RESTful API built using Python Pyramid. This project provides a robust backend solution for managing user data with CRUD operations and basic authentication.
+
+## Project Structure
+
+```
+aturmation_backend
+â”œâ”€â”€ aturmation_backend
+â”‚   â”œâ”€â”€ __init__.py          # Initializes the Pyramid application
+â”‚   â”œâ”€â”€ models
+â”‚   â”‚   â”œâ”€â”€ __init__.py      # Initializes the models package
+â”‚   â”‚   â””â”€â”€ user.py          # Defines the User model
+â”‚   â”œâ”€â”€ routes.py            # Defines the API routes
+â”‚   â”œâ”€â”€ security.py          # Implements basic authentication
+â”‚   â”œâ”€â”€ views
+â”‚   â”‚   â”œâ”€â”€ __init__.py      # Initializes the views package
+â”‚   â”‚   â””â”€â”€ default.py       # Contains view functions for CRUD operations
+â”‚   â””â”€â”€ templates            # Directory for HTML templates (if applicable)
+â”œâ”€â”€ tests
+â”‚   â”œâ”€â”€ __init__.py          # Initializes the tests package
+â”‚   â””â”€â”€ test_views.py        # Contains unit tests for view functions
+â”œâ”€â”€ venv                      # Virtual environment directory
+â”œâ”€â”€ development.ini          # Configuration for development environment
+â”œâ”€â”€ production.ini           # Configuration for production environment
+â”œâ”€â”€ MANIFEST.in              # Specifies additional files for package distribution
+â”œâ”€â”€ README.md                # Documentation for the project
+â”œâ”€â”€ setup.py                 # Configuration for packaging the project
+â””â”€â”€ requirements.txt         # Lists required Python packages
+```
+
+## Installation
+
+1. Clone the repository:
+   ```
+   git clone <repository-url>
+   cd aturmation_backend
+   ```
+
+2. Create a virtual environment:
+   ```
+   python -m venv venv
+   ```
+
+3. Activate the virtual environment:
+   - On Windows:
+     ```
+     venv\Scripts\activate
+     ```
+   - On macOS/Linux:
+     ```
+     source venv/bin/activate
+     ```
+
+4. Install the required packages:
+   ```
+   pip install -r requirements.txt
+   ```
+
+## Usage
+
+To run the application, use the following command:
+```
+pserve development.ini
+```
+
+## Testing
+
+To run the unit tests and ensure at least 60% coverage, use:
+```
+pytest --cov=aturmation_backend tests/
+```
+
+## License
+
+This project is licensed under the MIT License. See the LICENSE file for details.
