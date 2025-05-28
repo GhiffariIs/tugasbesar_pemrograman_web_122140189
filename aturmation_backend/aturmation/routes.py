@@ -1,20 +1,11 @@
 from pyramid.security import NO_PERMISSION_REQUIRED
 from .security.jwt import RootFactory
 
-
 def includeme(config):
     """Define routes for our application."""
     
     # Set up our custom root factory for all routes
     config.set_root_factory(RootFactory)
-    
-    # Enable CORS for all routes
-    config.add_cors_preflight_handler(
-    context=None,
-    allow_origins=('*',),
-    allow_methods=('GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'),
-    allow_headers=('Content-Type', 'Authorization')
-    )
     
     # Authentication routes
     config.add_route('login', '/api/login', permission=NO_PERMISSION_REQUIRED)
@@ -25,12 +16,12 @@ def includeme(config):
     
     # Category routes
     config.add_route('categories', '/api/categories')
-    config.add_route('category_item', '/api/categories/{id:\d+}')
+    config.add_route('category', '/api/categories/{id}')
     
     # Product routes
     config.add_route('products', '/api/products')
-    config.add_route('product_item', '/api/products/{id:\d+}')
+    config.add_route('product', '/api/products/{id}')
     
     # Transaction routes
     config.add_route('transactions', '/api/transactions')
-    config.add_route('transaction_item', '/api/transactions/{id:\d+}')
+    config.add_route('transaction', '/api/transactions/{id}')
