@@ -2,6 +2,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 from zope.sqlalchemy import register
 
+from .user import User # Model User yang sudah ada
+from .category import Category # Model Category yang baru
+
 DBSession = scoped_session(sessionmaker())
 
 def get_engine(settings, prefix='sqlalchemy.'):
@@ -33,3 +36,5 @@ def includeme(config):
         'dbsession',
         reify=True
     )
+
+    pass

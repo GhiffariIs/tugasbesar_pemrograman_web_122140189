@@ -1,54 +1,85 @@
-from pyramid.authentication import BasicAuthAuthenticationPolicy
+import jwt
+from datetime import datetime, timedelta, timezone
+from pyramid.authentication import CallbackAuthenticationPolicy
 from pyramid.authorization import ACLAuthorizationPolicy
-from pyramid.security import Allow, Deny, Everyone, Authenticated
-from passlib.context import CryptContext
+from pyramid.interfaces import IAuthenticationPolicy
+from zope.interface import implementer
+from pyramid.security import (
+    Allow,
+    Deny,
+    Everyone,
+    Authenticated,
+    ALL_PERMISSIONS
+)
+from .models.user import User, UserRole
+# from .models import DBSession # Tidak perlu jika pakai request.dbsession di get_principals
 
-from .models.user import User # Pastikan path import benar
+JWT_SECRET = 'ganti-dengan-kunci-rahasia-anda-yang-kuat!' # AMBIL DARI SETTINGS NANTI
+JWT_ALGORITHM = 'HS256'
+JWT_EXP_DELTA_SECONDS = 3600 * 24 # 1 hari
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+def create_jwt_token(user_id, username, role):
+    payload = {
+        'user_id': user_id, 'username': username, 'role': role.value if isinstance(role, UserRole) else role,
+        'exp': datetime.now(timezone.utc) + timedelta(seconds=JWT_EXP_DELTA_SECONDS),
+        'iat': datetime.now(timezone.utc)
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
-# Fungsi untuk mendapatkan user dari database berdasarkan username
-def get_user(username, request):
-    # Tambahkan print di sini untuk memastikan fungsi ini dipanggil
-    print(f"[DEBUG] get_user called for: {username}")
-    user = request.dbsession.query(User).filter_by(username=username).first()
-    if user:
-        print(f"[DEBUG] User found: {user.username}")
-    else:
-        print(f"[DEBUG] User NOT found: {username}")
-    return user
+def verify_jwt_token(token):
+    try:
+        return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+    except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
+        return None
 
-# Callback untuk BasicAuthAuthenticationPolicy
-def basic_auth_check(username, password, request):
-    print(f"\n[DEBUG] basic_auth_check called with username: '{username}', password: '{password}'") # Debug 1
-    user = get_user(username, request)
-    if user:
-        print(f"[DEBUG] User object retrieved for {username}: {user}") # Debug 2
-        password_check_result = user.check_password(password)
-        print(f"[DEBUG] user.check_password('{password}') result: {password_check_result}") # Debug 3
-        if password_check_result:
-            principals = [f'user:{user.id}', 'g:user']
-            print(f"[DEBUG] Authentication SUCCESSFUL for {username}. Principals returned: {principals}") # Debug 4
-            return principals
-        else:
-            print(f"[DEBUG] Password check FAILED for {username}.") # Debug 5
-    else:
-        print(f"[DEBUG] User {username} not found in database during auth check.") # Debug 6
+@implementer(IAuthenticationPolicy)
+class JWTAuthenticationPolicy(CallbackAuthenticationPolicy):
+    def __init__(self, callback=None): self.callback = callback
+    def unauthenticated_userid(self, request):
+        token = self.get_token(request)
+        if token:
+            payload = verify_jwt_token(token)
+            if payload: return payload.get('user_id')
+        return None
+    def get_token(self, request): # (Implementasi get_token dari header Authorization: Bearer)
+        auth_header = request.headers.get('Authorization')
+        if auth_header:
+            parts = auth_header.split()
+            if len(parts) == 2 and parts[0].lower() == 'bearer': return parts[1]
+        return None
+    # remember & forget bisa dikosongkan untuk JWT stateless
+    def remember(self, request, userid, **kw): return []
+    def forget(self, request): return []
 
-    print(f"[DEBUG] Authentication FAILED for {username}. Returning None.") # Debug 7
+
+def get_principals(userid, request):
+    if userid:
+        user = request.dbsession.query(User).get(userid)
+        if user:
+            role_value = user.role.value if user.role else 'unknown_role'
+            principals_to_return = [Authenticated, f'user:{user.id}', f'role:{role_value}']
+            # TAMBAHKAN ATAU PASTIKAN PRINT INI ADA:
+            print(f"[DEBUG security.py - get_principals] User ID: {userid}, Role: {role_value}, Principals: {principals_to_return}")
+            return principals_to_return
+    print(f"[DEBUG security.py - get_principals] No userid or user not found for ID {userid}. Returning None.")
     return None
-
+    
 class RootACL(object):
-    # Default: Semua orang bisa melihat (GET)
-    # Hanya user terautentikasi yang bisa membuat, mengubah, menghapus
     __acl__ = [
-        (Allow, Everyone, 'view'),
-        (Allow, Authenticated, 'create'),
-        (Allow, Authenticated, 'edit'),
-        (Allow, Authenticated, 'delete'),
-        (Deny, Everyone, 'create'), # Eksplisit deny untuk yang tidak terautentikasi
-        (Deny, Everyone, 'edit'),
-        (Deny, Everyone, 'delete'),
+        # Permissions untuk Autentikasi & User Umum
+        (Allow, Authenticated, 'view_authenticated'), # Untuk endpoint /auth/me
+
+        # --- Permissions untuk CATEGORIES ---
+        (Allow, f'role:{UserRole.admin.value}', 'category:view'),
+        (Allow, f'role:{UserRole.admin.value}', 'category:add'),
+        (Allow, f'role:{UserRole.admin.value}', 'category:edit'),
+        (Allow, f'role:{UserRole.admin.value}', 'category:delete'),
+        
+        # Staff hanya boleh melihat dan menambah kategori (contoh)
+        (Allow, f'role:{UserRole.staff.value}', 'category:view'),
+        (Allow, f'role:{UserRole.staff.value}', 'category:add'),
+
+        # TODO: Tambahkan ACL untuk Products dan entitas lain di sini nanti
     ]
 
     def __init__(self, request):
@@ -56,9 +87,10 @@ class RootACL(object):
 
 def includeme(config):
     settings = config.get_settings()
-    authn_policy = BasicAuthAuthenticationPolicy(check=basic_auth_check)
+    global JWT_SECRET
+    JWT_SECRET = settings.get('jwt.secret', JWT_SECRET)
+    authn_policy = JWTAuthenticationPolicy(callback=get_principals)
     authz_policy = ACLAuthorizationPolicy()
-
     config.set_authentication_policy(authn_policy)
     config.set_authorization_policy(authz_policy)
     config.set_root_factory(RootACL)

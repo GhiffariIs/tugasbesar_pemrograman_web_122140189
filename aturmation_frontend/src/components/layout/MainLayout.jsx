@@ -113,7 +113,6 @@ const MainLayout = ({ children }) => {
     { text: 'Produk', icon: <InventoryIcon />, path: '/app/products' },
     { text: 'Kategori', icon: <CategoryIcon />, path: '/app/categories' },
     { text: 'Transaksi', icon: <TransactionsIcon />, path: '/app/transactions' },
-    { text: 'Laporan', icon: <ReportIcon />, path: '/app/reports' },
     { text: 'Pengaturan', icon: <SettingsIcon />, path: '/app/settings' },
   ];
 

@@ -17,7 +17,8 @@ from ..models import (
     DBSession # If you use DBSession directly for initialization, ensure it's configured
 )
 from ..models.item import Item
-from ..models.user import User
+from ..models.user import User, UserRole
+from ..models.category import Category
 
 
 def usage(argv):
@@ -32,41 +33,43 @@ def main(argv=sys.argv):
     config_uri = argv[1]
     options = parse_vars(argv[2:])
     setup_logging(config_uri)
+    
+    # === Pastikan baris ini ada dan sebelum 'engine = get_engine(settings)' ===
     settings = get_appsettings(config_uri, options=options)
+    engine = get_engine(settings)
 
-    # >>> This is where 'engine' should be defined <<<
-    engine = get_engine(settings) # Make sure this line exists and is correctly called
+    # HAPUS TABEL LAMA (hati-hati jika ada data penting, backup dulu)
+    # Ini hanya untuk development agar skema baru bisa dibuat.
+    # User.__table__.drop(engine, checkfirst=True) # Hapus tabel user jika ada
+    # Base.metadata.drop_all(engine, tables=[User.__table__]) # Cara lain jika hanya user
 
-    # Create tables if they don't exist
+    # Buat semua tabel (termasuk user yang baru)
     Base.metadata.create_all(engine)
 
-    # >>> 'session_factory' should be created after 'engine' is defined <<<
-    session_factory = get_session_factory(engine) # This was the problematic area
-
+    session_factory = get_session_factory(engine)
     with transaction.manager:
         dbsession = get_tm_session(session_factory, transaction.manager)
-        # Alternatively, if you've configured DBSession globally:
-        # DBSession.configure(bind=engine)
-        # dbsession = DBSession()
 
-        # Check if admin already exists
         admin = dbsession.query(User).filter_by(username='admin').first()
         if not admin:
-            admin_user = User(username='admin')
+            admin_user = User(
+                name='Administrator', # Tambahkan nama
+                username='admin',
+                email='admin@example.com', # Tambahkan email
+                role=UserRole.admin # Set role admin
+            )
             admin_user.set_password('adminpassword') # Ganti dengan password yang kuat
             dbsession.add(admin_user)
-            print("Admin user created with username 'admin' and password 'adminpassword'")
+            print("Admin user created with username 'admin', email 'admin@example.com', role 'admin', and password 'adminpassword'")
         else:
-            print("Admin user already exists.")
-
-        # Contoh menambahkan item awal (opsional)
-        if dbsession.query(Item).count() == 0:
-            item1 = Item(name='Contoh Item 1', description='Deskripsi item pertama')
-            item2 = Item(name='Contoh Item 2', description='Deskripsi item kedua')
-            dbsession.add_all([item1, item2])
-            print("Sample items created.")
-        else:
-            print("Items already exist or table is not empty.")
+            # Jika admin sudah ada, pastikan field baru terisi (opsional, tergantung kebijakan Anda)
+            if not admin.name:
+                admin.name = 'Administrator'
+            if not admin.email:
+                admin.email = 'admin@example.com'
+            if not admin.role:
+                admin.role = UserRole.admin
+            print("Admin user already exists. Ensure new fields are populated.")
 
 # If you have any code outside the main() function that tries to use 'engine'
 # or 'session_factory', it needs to be moved inside main() or have these
