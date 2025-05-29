@@ -10,6 +10,7 @@ aturmation_app.egg-info/not-zip-safe
 aturmation_app.egg-info/requires.txt
 aturmation_app.egg-info/top_level.txt
 aturmation_app/models/__init__.py
+aturmation_app/models/category.py
 aturmation_app/models/item.py
 aturmation_app/models/meta.py
 aturmation_app/models/user.py

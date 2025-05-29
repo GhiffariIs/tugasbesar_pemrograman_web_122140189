@@ -5,8 +5,9 @@ from sqlalchemy import (
     Text,
     DateTime
 )
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from .meta import Base # Asumsi meta.py ada di direktori yang sama (models)
+from .meta import Base
 import datetime
 
 class Category(Base):
@@ -17,6 +18,8 @@ class Category(Base):
     description = Column(Text, nullable=True)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    products = relationship("Product", back_populates="category")
 
     def as_dict(self):
         return {

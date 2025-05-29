@@ -2,8 +2,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 from zope.sqlalchemy import register
 
-from .user import User # Model User yang sudah ada
-from .category import Category # Model Category yang baru
+from .user import User
+from .category import Category
+from .product import Product
 
 DBSession = scoped_session(sessionmaker())
 

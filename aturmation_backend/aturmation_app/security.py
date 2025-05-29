@@ -79,6 +79,17 @@ class RootACL(object):
         (Allow, f'role:{UserRole.staff.value}', 'category:view'),
         (Allow, f'role:{UserRole.staff.value}', 'category:add'),
 
+        # Admin boleh semua untuk produk
+        (Allow, f'role:{UserRole.admin.value}', 'product:view'),
+        (Allow, f'role:{UserRole.admin.value}', 'product:add'),
+        (Allow, f'role:{UserRole.admin.value}', 'product:edit'),
+        (Allow, f'role:{UserRole.admin.value}', 'product:delete'),
+        
+        # Staff boleh lihat, tambah, dan edit produk (contoh)
+        (Allow, f'role:{UserRole.staff.value}', 'product:view'),
+        (Allow, f'role:{UserRole.staff.value}', 'product:add'),
+        (Allow, f'role:{UserRole.staff.value}', 'product:edit'),
+
         # TODO: Tambahkan ACL untuk Products dan entitas lain di sini nanti
     ]
 

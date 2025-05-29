@@ -1,23 +1,18 @@
+# aturmation_app/__init__.py
 from pyramid.config import Configurator
 
 def main(global_config, **settings):
-    """ This function returns a Pyramid WSGI application.
-    """
     with Configurator(settings=settings) as config:
-        # Sertakan konfigurasi model (SQLAlchemy)
-        config.include('.models') # Titik (.) merujuk ke paket saat ini
-
-        # Sertakan pyramid_tm untuk manajemen transaksi per request
+        config.include('.models')
         config.include('pyramid_tm')
+        # config.include('pyramid_cors')
+        config.add_tween('aturmation_app.tweens.cors_tween_factory')
+        config.include('.security')
+        config.include('.routes') # Memuat rute-rute
 
-        # Sertakan konfigurasi security (autentikasi & otorisasi)
-        config.include('.security') # Titik (.) merujuk ke paket saat ini
-
-        # Sertakan Jinja2 jika Anda berencana menggunakan template HTML
-        # config.include('pyramid_jinja2')
-
-        # Sertakan rute dari routes.py
-        config.include('.routes') # Titik (.) merujuk ke paket saat ini
-
-        config.scan() # Memindai view dan konfigurasi lainnya
+        # config.scan() di sini akan memindai seluruh paket aturmation_app.
+        # Jika routes.py Anda sudah memiliki config.scan('.views'),
+        # itu sudah cukup untuk view di dalam paket .views.
+        # Memiliki config.scan() di sini sebagai catch-all juga tidak masalah.
+        config.scan() 
     return config.make_wsgi_app()
