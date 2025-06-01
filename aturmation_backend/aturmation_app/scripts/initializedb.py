@@ -16,11 +16,10 @@ from ..models import (
     get_tm_session,
     DBSession # If you use DBSession directly for initialization, ensure it's configured
 )
-from ..models.item import Item
 from ..models.user import User, UserRole
 from ..models.category import Category
 from ..models.product import Product
-
+from ..models.transaction import Transaction, TransactionType
 
 def usage(argv):
     cmd = os.path.basename(argv[0])
@@ -35,14 +34,8 @@ def main(argv=sys.argv):
     options = parse_vars(argv[2:])
     setup_logging(config_uri)
     
-    # === Pastikan baris ini ada dan sebelum 'engine = get_engine(settings)' ===
     settings = get_appsettings(config_uri, options=options)
     engine = get_engine(settings)
-
-    # HAPUS TABEL LAMA (hati-hati jika ada data penting, backup dulu)
-    # Ini hanya untuk development agar skema baru bisa dibuat.
-    # User.__table__.drop(engine, checkfirst=True) # Hapus tabel user jika ada
-    # Base.metadata.drop_all(engine, tables=[User.__table__]) # Cara lain jika hanya user
 
     # Buat semua tabel (termasuk user yang baru)
     Base.metadata.create_all(engine)
@@ -71,7 +64,3 @@ def main(argv=sys.argv):
             if not admin.role:
                 admin.role = UserRole.admin
             print("Admin user already exists. Ensure new fields are populated.")
-
-# If you have any code outside the main() function that tries to use 'engine'
-# or 'session_factory', it needs to be moved inside main() or have these
-# variables passed to it.

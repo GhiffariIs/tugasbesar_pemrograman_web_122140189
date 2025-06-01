@@ -38,7 +38,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV="D:\Aa\Kuliah\Pemrograman Web RB\tugasbesar_pemrograman_web_122140189\aturmation_backend\venv"
+VIRTUAL_ENV="D:\Aa\Kuliah\Semester 6\Pemrograman Web RB\Tubes\tugasbesar_pemrograman_web_122140189\aturmation_backend\venv"
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"
