@@ -145,3 +145,122 @@ def auth_me_view(request):
     # Pyramid akan menangani ini berdasarkan permission='view_authenticated' dan ACL.
     # Biasanya akan menghasilkan 401 atau 403. Kita bisa return 401 secara eksplisit jika mau.
     return HTTPUnauthorized(json_body={'message': 'Authentication required.'})
+
+PROFILE_EDIT_PERMISSION = 'profile:edit' 
+
+@view_config(
+    route_name='api_user_profile_update',
+    request_method='PUT',
+    renderer='json',
+    permission=PROFILE_EDIT_PERMISSION
+)
+def update_user_profile_view(request):
+    user_id = request.authenticated_userid # ID user yang sedang login (dari token JWT)
+    if not user_id:
+        # Seharusnya tidak terjadi jika permission 'Authenticated' sudah dicek
+        raise HTTPForbidden(json_body={'message': 'Authentication required.'})
+
+    try:
+        print(f"[DEBUG] update_user_profile_view: Attempting to update profile for user ID: {user_id}")
+        user_to_update = request.dbsession.query(User).get(user_id)
+
+        if not user_to_update:
+            # Skenario aneh jika user_id dari token valid tapi user tidak ada di DB
+            raise HTTPNotFound(json_body={'message': 'User not found.'})
+
+        data = request.json_body
+        print(f"[DEBUG] update_user_profile_view: Received data: {data}")
+
+        updated_fields = []
+        errors = {}
+
+        # Update Name
+        if 'name' in data:
+            new_name = data.get('name')
+            if not new_name or not isinstance(new_name, str) or len(new_name.strip()) == 0:
+                errors['name'] = 'Name must be a non-empty string.'
+            elif len(new_name) > 100:
+                errors['name'] = 'Name cannot exceed 100 characters.'
+            else:
+                user_to_update.name = new_name
+                updated_fields.append('name')
+        
+        # Update Email
+        if 'email' in data:
+            new_email = data.get('email')
+            if not new_email or not isinstance(new_email, str) or len(new_email.strip()) == 0: # Basic check
+                errors['email'] = 'Email must be a non-empty string.'
+            # TODO: Tambahkan validasi format email yang lebih baik
+            elif len(new_email) > 100:
+                errors['email'] = 'Email cannot exceed 100 characters.'
+            else:
+                # Cek apakah email baru sudah digunakan oleh user lain
+                if new_email.lower() != user_to_update.email.lower(): # Hanya cek jika email diubah
+                    existing_user_with_email = request.dbsession.query(User).filter(
+                        User.email == new_email,
+                        User.id != user_id # Abaikan user saat ini
+                    ).first()
+                    if existing_user_with_email:
+                        errors['email'] = f"Email '{new_email}' is already in use by another account."
+                    else:
+                        user_to_update.email = new_email
+                        updated_fields.append('email')
+                else: # Email sama, tidak ada perubahan
+                    pass 
+        
+        # Update Photo URL (untuk sekarang hanya sebagai string)
+        if 'photo' in data:
+            # Frontend mengirimkan URL string untuk foto
+            # Validasi sederhana: apakah itu string dan tidak terlalu panjang
+            new_photo_url = data.get('photo')
+            if new_photo_url is not None: # Boleh string kosong atau null untuk menghapus foto
+                if not isinstance(new_photo_url, str):
+                     errors['photo'] = 'Photo URL must be a string.'
+                elif len(new_photo_url) > 255: # Sesuaikan panjang maksimal jika perlu
+                     errors['photo'] = 'Photo URL is too long.'
+                else:
+                    user_to_update.photo = new_photo_url if new_photo_url.strip() else None # Set None jika string kosong
+                    updated_fields.append('photo')
+            else: # Jika dikirim null, artinya hapus foto
+                user_to_update.photo = None
+                updated_fields.append('photo')
+
+
+        if errors:
+            raise HTTPBadRequest(json_body={'message': 'Validation failed.', 'errors': errors})
+
+        if not updated_fields:
+            return HTTPOk(json_body={
+                'message': 'No changes detected or no valid fields provided for update.',
+                'user': user_to_update.as_dict()
+            })
+
+        # request.dbsession.add(user_to_update) # Tidak perlu jika sudah di-track sesi
+        request.dbsession.flush() # Untuk menjalankan validasi DB dan error lebih awal
+        print(f"[DEBUG] update_user_profile_view: Profile updated for user ID {user_id}. Fields: {', '.join(updated_fields)}")
+        
+        return HTTPOk(json_body={
+            'message': 'Profile updated successfully.',
+            'user': user_to_update.as_dict()
+        })
+
+    except HTTPBadRequest as e:
+        # request.dbsession.rollback() # pyramid_tm akan handle rollback
+        return e
+    except IntegrityError as e: # Jika ada unique constraint (misal email) yang terlewat validasi
+        request.dbsession.rollback()
+        print(f"[DEBUG] update_user_profile_view: IntegrityError - {e}")
+        # Cek apakah error karena email duplikat
+        if 'uq_users_email' in str(e).lower() or ('unique constraint' in str(e).lower() and 'email' in str(e).lower()):
+             return HTTPBadRequest(json_body={'message': 'Profile update failed.', 'errors': {'email': f"Email '{data.get('email')}' is already in use."}})
+        return HTTPBadRequest(json_body={'message': 'Profile update failed due to a data conflict.'})
+    except DBAPIError as e:
+        request.dbsession.rollback()
+        print(f"[DEBUG] update_user_profile_view: DBAPIError - {e}")
+        return HTTPBadRequest(json_body={'message': "Database error during profile update."})
+    except Exception as e:
+        request.dbsession.rollback()
+        print(f"[DEBUG] update_user_profile_view: Unexpected error - {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
+        return HTTPBadRequest(json_body={'message': f"An unexpected error occurred: {e}"})

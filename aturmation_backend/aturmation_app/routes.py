@@ -17,4 +17,13 @@ def includeme(config):
 
     config.add_route('api_transactions_collection', '/api/v1/transactions')
 
+    # === Rute untuk Dashboard ===
+    config.add_route('api_dashboard_summary', '/api/v1/dashboard/summary')
+    config.add_route('api_dashboard_low_stock_items', '/api/v1/dashboard/low-stock-items')
+    config.add_route('api_dashboard_recent_products', '/api/v1/dashboard/recent-products')
+    config.add_route('api_dashboard_transaction_chart', '/api/v1/dashboard/transaction-chart')
+
+    # Rute untuk User Profile
+    config.add_route('api_user_profile_update', '/api/v1/users/me/profile')
+
     config.scan('.views')

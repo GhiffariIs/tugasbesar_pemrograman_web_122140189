@@ -90,6 +90,21 @@ class RootACL(object):
         (Allow, f'role:{UserRole.staff.value}', 'product:add'),
         (Allow, f'role:{UserRole.staff.value}', 'product:edit'),
 
+        # --- Permissions untuk TRANSACTIONS ---
+        (Allow, f'role:{UserRole.admin.value}', 'transaction:view'),
+        (Allow, f'role:{UserRole.admin.value}', 'transaction:add'),
+
+        (Allow, f'role:{UserRole.staff.value}', 'transaction:view'),
+        (Allow, f'role:{UserRole.staff.value}', 'transaction:add'),
+
+        # === Permissions untuk DASHBOARD (BARU) ===
+        # Admin dan Staff boleh melihat dashboard
+        (Allow, f'role:{UserRole.admin.value}', 'dashboard:view'),
+        (Allow, f'role:{UserRole.staff.value}', 'dashboard:view'),
+
+        # --- Permissions untuk USER PROFILE ---
+        (Allow, Authenticated, 'profile:edit'),
+
         # TODO: Tambahkan ACL untuk Products dan entitas lain di sini nanti
     ]
 
