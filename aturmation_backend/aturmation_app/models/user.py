@@ -1,11 +1,16 @@
 # aturmation_app/models/user.py
-from sqlalchemy import Column, Integer, Text, String, DateTime, func
+from sqlalchemy import Column, Integer, Text, String, DateTime, Enum, func
 from sqlalchemy.ext.declarative import declarative_base
 from passlib.context import CryptContext
 
 from .meta import Base
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# Definisi enum untuk role
+class UserRole:
+    ADMIN = 'admin'
+    STAFF = 'staff'
 
 class User(Base):
     __tablename__ = 'users'
@@ -15,8 +20,8 @@ class User(Base):
     username = Column(String(50), nullable=False, unique=True)
     email = Column(String(100), nullable=False, unique=True)
     hashed_password = Column(Text, nullable=False)
-    # Tetap simpan kolom role untuk kompatibilitas
-    role = Column(String(20), nullable=False, default='user')
+    # Gunakan nilai enum yang valid: 'admin' atau 'staff'
+    role = Column(String(20), nullable=False, default=UserRole.STAFF)
     photo = Column(Text, nullable=True)
 
     def set_password(self, password):
@@ -32,5 +37,5 @@ class User(Base):
             'username': self.username,
             'email': self.email,
             'photo': self.photo
-            # Tidak perlu menampilkan role ke client
+            # Role tidak perlu ditampilkan ke client
         }

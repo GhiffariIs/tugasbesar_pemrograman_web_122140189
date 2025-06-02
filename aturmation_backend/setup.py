@@ -7,10 +7,11 @@ requires = [
     'psycopg2-binary',
     'sqlalchemy',
     'pyramid_tm',
+    'pyramid_retry',
     'zope.sqlalchemy',
     'passlib',
     'bcrypt',
-    # 'pyramid_jwt', # Jika menggunakan JWT
+    'pyramid_jwt'
 ]
 
 dev_requires = [

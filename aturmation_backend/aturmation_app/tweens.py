@@ -1,5 +1,8 @@
 # aturmation_app/tweens.py
 from pyramid.settings import aslist
+import logging
+
+log = logging.getLogger(__name__)
 
 def cors_tween_factory(handler, registry):
     """A tween factory that adds CORS headers to all responses."""
@@ -43,3 +46,35 @@ def cors_tween_factory(handler, registry):
 
         return response
     return cors_tween
+
+def db_session_tween_factory(handler, registry):
+    """
+    Tween factory untuk mengelola session database.
+    Melakukan commit jika request berhasil, rollback jika ada exception.
+    """
+    def db_session_tween(request):
+        try:
+            # Process the request
+            response = handler(request)
+            
+            # If there's a database session, commit changes
+            if hasattr(request, 'dbsession'):
+                try:
+                    request.dbsession.commit()
+                except Exception as e:
+                    log.error(f"Error committing database session: {e}")
+                    request.dbsession.rollback()
+                    raise
+            
+            return response
+        except Exception:
+            # If there's an exception, rollback any changes
+            if hasattr(request, 'dbsession'):
+                request.dbsession.rollback()
+            raise
+        finally:
+            # Close the session
+            if hasattr(request, 'dbsession'):
+                request.dbsession.close()
+    
+    return db_session_tween

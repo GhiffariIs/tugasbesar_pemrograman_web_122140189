@@ -2,14 +2,14 @@
 from sqlalchemy import engine_from_config
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import configure_mappers
-import zope.sqlalchemy
 
-# Import models
-from .meta import Base
-from .user import User  # Hapus UserRole
-from .product import Product
+# import or define all models here to ensure they are attached to the
+# Base.metadata prior to any initialization routines
+from .user import User  # flake8: noqa
+from .product import Product  # flake8: noqa
 
-# Pastikan semua model diimpor sebelum ini
+# run configure_mappers after defining all of the models to ensure
+# all relationships can be setup
 configure_mappers()
 
 
@@ -23,31 +23,23 @@ def get_session_factory(engine):
     return factory
 
 
-def get_tm_session(session_factory, transaction_manager):
-    """
-    Get a SqlAlchemy session managed by the transaction manager.
-    """
-    dbsession = session_factory()
-    zope.sqlalchemy.register(
-        dbsession, transaction_manager=transaction_manager)
-    return dbsession
-
-
 def includeme(config):
     """
     Initialize the model for a Pyramid app.
+
+    Activate this setup using ``config.include('aturmation_app.models')``.
+
     """
     settings = config.get_settings()
-    settings['tm.manager_hook'] = 'pyramid_tm.explicit_manager'
 
-    # Use 'sqlalchemy.url' as the connection string from development.ini
+    # create session factory and register it
     session_factory = get_session_factory(get_engine(settings))
     config.registry['dbsession_factory'] = session_factory
 
-    # Make request.dbsession available for use in Pyramid
+    # make request.dbsession available for use in Pyramid views
     config.add_request_method(
-        # r.tm is the transaction manager used by pyramid_tm
-        lambda r: get_tm_session(session_factory, r.tm),
+        # Simple session factory without transaction manager
+        lambda r: session_factory(),
         'dbsession',
         reify=True
     )

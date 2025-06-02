@@ -1,77 +1,110 @@
 # aturmation_app/security.py
 import os
 import datetime
+import jwt
+import logging
 from pyramid.authentication import CallbackAuthenticationPolicy
-from pyramid.authorization import ACLAuthorizationPolicy
 from pyramid.security import (
     Authenticated,
     Everyone,
     Allow,
 )
-import jwt
-from jwt.exceptions import PyJWTError
 
-# Tetap gunakan JWT_SECRET untuk enkripsi token
-JWT_SECRET = os.environ.get('JWT_SECRET', 'ganti-dengan-kunci-rahasia-anda-yang-kuat!')
+log = logging.getLogger(__name__)
+
+# JWT settings
+JWT_SECRET = 'aturmation-secret-key'  # Idealnya dari settings
 JWT_ALGORITHM = 'HS256'
 
 def create_jwt_token(user_id, username):
-    """Buat JWT token tanpa menyertakan role"""
-    payload = {
-        'sub': str(user_id),
-        'username': username,
-        'iat': datetime.datetime.utcnow(),
-        'exp': datetime.datetime.utcnow() + datetime.timedelta(days=1)
-    }
-    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    """Create a JWT token for authentication"""
+    try:
+        payload = {
+            'sub': str(user_id),
+            'username': username,
+            'iat': datetime.datetime.utcnow(),
+            'exp': datetime.datetime.utcnow() + datetime.timedelta(days=1)
+        }
+        token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+        # JWT library returns bytes in some versions, string in others
+        if isinstance(token, bytes):
+            return token.decode('utf-8')
+        return token
+    except Exception as e:
+        log.error(f"Error creating JWT token: {e}")
+        raise
 
-def verify_jwt_token(token):
-    """Verifikasi JWT token"""
+def parse_jwt_token(token):
+    """Parse a JWT token and return the payload"""
     try:
         return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-    except PyJWTError as e:
-        print(f"[DEBUG security.py - verify_jwt_token] JWT verification failed: {str(e)}")
+    except jwt.ExpiredSignatureError:
+        log.warning("Token expired")
+        return None
+    except jwt.InvalidTokenError as e:
+        log.warning(f"Invalid token: {e}")
+        return None
+    except Exception as e:
+        log.error(f"Unexpected error parsing token: {e}")
+        return None
+
+def get_user(request):
+    """Get the current user from the request"""
+    # Avoid circular imports
+    from .models import User
+    
+    # Check if user is already in request
+    user = getattr(request, 'user', None)
+    if user is not None:
+        return user
+    
+    # Extract token from header
+    auth_header = request.headers.get('Authorization', '')
+    if not auth_header.startswith('Bearer '):
+        return None
+    
+    token = auth_header.split(' ', 1)[1]
+    payload = parse_jwt_token(token)
+    if payload is None:
+        return None
+    
+    user_id = payload.get('sub')
+    if not user_id:
+        return None
+    
+    # Get user from database
+    try:
+        user = request.dbsession.query(User).filter_by(id=user_id).first()
+        if user:
+            # Store user in request to avoid multiple database lookups
+            request.user = user
+        return user
+    except Exception as e:
+        log.error(f"Error getting user from database: {e}")
         return None
 
 class JWTAuthenticationPolicy(CallbackAuthenticationPolicy):
-    """Token-based Authentication Policy using JWT."""
-    def __init__(self, callback=None):
-        self.callback = callback
-
     def unauthenticated_userid(self, request):
-        """Extract user ID from JWT token in the Authorization header."""
-        jwt_token = self._get_jwt_token(request)
-        if not jwt_token:
+        auth_header = request.headers.get('Authorization', '')
+        if not auth_header.startswith('Bearer '):
             return None
         
-        payload = verify_jwt_token(jwt_token)
+        token = auth_header.split(' ', 1)[1]
+        payload = parse_jwt_token(token)
         if payload is None:
             return None
             
         return payload.get('sub')
     
-    def remember(self, request, userid, **kw):
-        """No-op since JWT tokens are stateless."""
+    def callback(self, userid, request):
+        # Simplified for testing - all authenticated users get all permissions
+        if userid:
+            return ['view', 'create', 'edit', 'delete']
         return []
-        
-    def forget(self, request):
-        """Returns HTTP headers to forget the current user."""
-        return [('Authorization', '')]
-        
-    def _get_jwt_token(self, request):
-        """Extract JWT token from Authorization header."""
-        auth_header = request.headers.get('Authorization', '')
-        if not auth_header:
-            return None
-            
-        parts = auth_header.split()
-        if len(parts) != 2 or parts[0].lower() != 'bearer':
-            return None
-            
-        return parts[1]
 
-class RootACL:
-    """Simplified ACL that gives all authenticated users full access."""
+# Root factory to define ACLs
+class RootFactory(object):
+    """Root factory for ACL"""
     __acl__ = [
         (Allow, Authenticated, 'view'),
         (Allow, Authenticated, 'create'),
@@ -81,30 +114,3 @@ class RootACL:
     
     def __init__(self, request):
         pass
-
-def get_user(request):
-    """Get current user from request."""
-    user_id = request.unauthenticated_userid
-    if user_id is not None:
-        from .models import User
-        return request.dbsession.query(User).filter(User.id == user_id).first()
-    return None
-
-def includeme(config):
-    # Set authentication and authorization policies
-    authn_policy = JWTAuthenticationPolicy()
-    config.set_authentication_policy(authn_policy)
-    
-    authz_policy = ACLAuthorizationPolicy()
-    config.set_authorization_policy(authz_policy)
-    
-    # Get JWT secret from settings if available
-    settings = config.get_settings()
-    global JWT_SECRET
-    JWT_SECRET = settings.get('jwt.secret', JWT_SECRET)
-    
-    # Add request methods
-    config.add_request_method(get_user, 'user', reify=True)
-    
-    # Set default root factory
-    config.set_root_factory(RootACL)
