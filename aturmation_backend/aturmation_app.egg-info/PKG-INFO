@@ -8,9 +8,11 @@ Requires-Dist: waitress
 Requires-Dist: psycopg2-binary
 Requires-Dist: sqlalchemy
 Requires-Dist: pyramid_tm
+Requires-Dist: pyramid_retry
 Requires-Dist: zope.sqlalchemy
 Requires-Dist: passlib
 Requires-Dist: bcrypt
+Requires-Dist: pyramid_jwt
 Provides-Extra: dev
 Requires-Dist: pyramid_debugtoolbar; extra == "dev"
 Requires-Dist: pytest; extra == "dev"

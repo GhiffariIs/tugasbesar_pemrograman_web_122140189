@@ -31,11 +31,25 @@ class User(Base):
         return pwd_context.verify(password, self.hashed_password)
         
     def to_dict(self):
-        return {
-            'id': self.id,
-            'name': self.name,
-            'username': self.username,
-            'email': self.email,
-            'photo': self.photo
-            # Role tidak perlu ditampilkan ke client
-        }
+        """
+        Convert user to dictionary for JSON serialization.
+        Pastikan method ini tidak memanggil fungsi lain yang bisa menyebabkan rekursi.
+        """
+        try:
+            return {
+                'id': self.id,
+                'name': self.name,
+                'username': self.username,
+                'email': self.email,
+                'photo': self.photo
+            }
+        except Exception as e:
+            import logging
+            log = logging.getLogger(__name__)
+            log.error(f"Error in User.to_dict(): {e}")
+            return {
+                'id': self.id,
+                'name': 'Error retrieving user data',
+                'username': '',
+                'email': ''
+            }

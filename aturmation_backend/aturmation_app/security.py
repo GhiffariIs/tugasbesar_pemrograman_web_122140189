@@ -53,10 +53,18 @@ def get_user(request):
     # Avoid circular imports
     from .models import User
     
-    # Check if user is already in request
-    user = getattr(request, 'user', None)
-    if user is not None:
-        return user
+    # PENTING: Periksa apakah ini adalah request untuk /api/v1/auth/me
+    # untuk mencegah rekursi tak terhingga
+    if request.path == '/api/v1/auth/me' and hasattr(request, '_get_user_recursion'):
+        return None
+    
+    # Set flag untuk menghindari rekursi
+    request._get_user_recursion = True
+    
+    # Check if user is already in request (menggunakan nama yang berbeda untuk menghindari konflik)
+    cached_user = getattr(request, '_cached_user', None)
+    if cached_user is not None:
+        return cached_user
     
     # Extract token from header
     auth_header = request.headers.get('Authorization', '')
@@ -77,7 +85,8 @@ def get_user(request):
         user = request.dbsession.query(User).filter_by(id=user_id).first()
         if user:
             # Store user in request to avoid multiple database lookups
-            request.user = user
+            # Gunakan nama yang berbeda untuk menghindari konflik
+            request._cached_user = user
         return user
     except Exception as e:
         log.error(f"Error getting user from database: {e}")

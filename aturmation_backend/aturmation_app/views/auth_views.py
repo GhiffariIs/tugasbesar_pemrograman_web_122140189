@@ -143,23 +143,59 @@ def auth_login_view(request):
             'message': 'Server error occurred'
         })
 
-@view_config(route_name='api_auth_me', permission='view', renderer='json')
+@view_config(route_name='api_auth_me', renderer='json')
 def auth_me_view(request):
     """Get the current authenticated user"""
     try:
-        user = request.user
-        if not user:
+        # Dapatkan user langsung dari token, bukan melalui request.user
+        auth_header = request.headers.get('Authorization', '')
+        if not auth_header.startswith('Bearer '):
             return Response(json_body={
                 'status': 'error',
                 'message': 'Not authenticated'
             }, status=401)
         
+        token = auth_header.split(' ', 1)[1]
+        from ..security import parse_jwt_token
+        payload = parse_jwt_token(token)
+        if not payload:
+            return Response(json_body={
+                'status': 'error',
+                'message': 'Invalid token'
+            }, status=401)
+        
+        user_id = payload.get('sub')
+        if not user_id:
+            return Response(json_body={
+                'status': 'error',
+                'message': 'Invalid token payload'
+            }, status=401)
+        
+        from ..models import User
+        user = request.dbsession.query(User).filter_by(id=user_id).first()
+        
+        if not user:
+            return Response(json_body={
+                'status': 'error',
+                'message': 'User not found'
+            }, status=401)
+        
+        # Buat dictionary user secara manual
+        user_data = {
+            'id': user.id,
+            'name': user.name,
+            'username': user.username,
+            'email': user.email,
+            'photo': user.photo
+        }
+        
         return Response(json_body={
             'status': 'success',
-            'user': user.to_dict()
+            'user': user_data
         })
     except Exception as e:
-        log.error(f"auth_me_view: Error - {e}")
+        log = logging.getLogger(__name__)
+        log.error(f"auth_me_view: Error - {e}", exc_info=True)
         return HTTPInternalServerError(json_body={
             'status': 'error',
             'message': 'Server error occurred'
