@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Container, Typography, Grid, Paper, useTheme, useMediaQuery } from '@mui/material';
-import Navbar from '../layout/Navbar';
+import Navbar from '../components/layout/Navbar';
 
 const AboutPage = () => {
   const theme = useTheme();

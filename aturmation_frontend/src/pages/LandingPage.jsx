@@ -14,7 +14,7 @@ import {
   Avatar
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import Navbar from '../layout/Navbar';
+import Navbar from '../components/layout/Navbar';
 import aturmationLogo from '../../assets/aturmation.svg';
 
 const HeroSection = styled(Box)(({ theme }) => ({

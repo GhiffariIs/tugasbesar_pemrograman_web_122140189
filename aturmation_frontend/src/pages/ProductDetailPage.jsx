@@ -1,41 +1,42 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Box,
-  Typography,
-  Paper,
-  Grid,
-  Divider,
-  Button,
+import { 
+  Box, 
+  Typography, 
+  Paper, 
+  Grid, 
   Chip,
+  Button,
+  Divider,
   CircularProgress,
+  Breadcrumbs,
+  Link,
   Alert,
-  Card,
-  CardContent,
-  IconButton,
-  Dialog,
+  IconButton
 } from '@mui/material';
-import { ArrowBack, Edit as EditIcon } from '@mui/icons-material';
-import { useParams, useNavigate } from 'react-router-dom';
+import {
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  ArrowBack as ArrowBackIcon,
+  Check as CheckIcon,
+  Warning as WarningIcon
+} from '@mui/icons-material';
+import { useNavigate, useParams } from 'react-router-dom';
 import { productService } from '../services/services';
-import ProductForm from '../components/products/ProductForm';
 
 const ProductDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [openEditDialog, setOpenEditDialog] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchProduct = async () => {
-      setLoading(true);
       try {
         const data = await productService.getProductById(id);
         setProduct(data);
       } catch (err) {
-        console.error('Error fetching product details:', err);
+        console.error('Error fetching product:', err);
         setError('Failed to load product details');
       } finally {
         setLoading(false);
@@ -45,27 +46,41 @@ const ProductDetailPage = () => {
     fetchProduct();
   }, [id]);
 
-  const handleUpdateProduct = async (updatedData) => {
-    setLoading(true);
-    try {
-      const updated = await productService.updateProduct(id, updatedData);
-      setProduct(updated);
-      setOpenEditDialog(false);
-    } catch (err) {
-      console.error('Error updating product:', err);
-      setError('Failed to update product');
-    } finally {
-      setLoading(false);
-    }
+  const handleEdit = () => {
+    navigate(`/products/${id}/edit`);
   };
 
-  const handleGoBack = () => {
+  const handleBack = () => {
     navigate('/products');
   };
 
-  if (loading && !product) {
+  const getStockStatusChip = (product) => {
+    const minStock = product.minStock || 10;
+    
+    if (product.stock === 0) {
+      return <Chip
+        color="error" 
+        icon={<WarningIcon />} 
+        label="Out of stock" 
+      />;
+    } else if (product.stock <= minStock) {
+      return <Chip 
+        color="warning" 
+        icon={<WarningIcon />} 
+        label="Low stock" 
+      />;
+    } else {
+      return <Chip 
+        color="success" 
+        icon={<CheckIcon />} 
+        label="In stock" 
+      />;
+    }
+  };
+
+  if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
         <CircularProgress />
       </Box>
     );
@@ -73,12 +88,25 @@ const ProductDetailPage = () => {
 
   if (error) {
     return (
-      <Box p={3}>
-        <Alert severity="error">{error}</Alert>
+      <Box>
+        <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
         <Button 
-          startIcon={<ArrowBack />} 
-          onClick={handleGoBack} 
-          sx={{ mt: 2 }}
+          startIcon={<ArrowBackIcon />}
+          onClick={handleBack}
+        >
+          Back to Products
+        </Button>
+      </Box>
+    );
+  }
+
+  if (!product) {
+    return (
+      <Box>
+        <Alert severity="warning" sx={{ mb: 2 }}>Product not found</Alert>
+        <Button 
+          startIcon={<ArrowBackIcon />}
+          onClick={handleBack}
         >
           Back to Products
         </Button>
@@ -88,93 +116,99 @@ const ProductDetailPage = () => {
 
   return (
     <Box>
-      <Box display="flex" alignItems="center" mb={3}>
-        <IconButton onClick={handleGoBack} sx={{ mr: 1 }}>
-          <ArrowBack />
-        </IconButton>
-        <Typography variant="h4" component="h1">
-          Product Details
-        </Typography>
-        <Box flexGrow={1} />
+      <Breadcrumbs sx={{ mb: 2 }}>
+        <Link color="inherit" href="/" onClick={(e) => {
+          e.preventDefault();
+          navigate('/');
+        }}>
+          Dashboard
+        </Link>
+        <Link color="inherit" href="/products" onClick={(e) => {
+          e.preventDefault();
+          navigate('/products');
+        }}>
+          Products
+        </Link>
+        <Typography color="text.primary">{product.name}</Typography>
+      </Breadcrumbs>
+
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+        <Box display="flex" alignItems="center">
+          <IconButton onClick={handleBack} sx={{ mr: 1 }}>
+            <ArrowBackIcon />
+          </IconButton>
+          <Typography variant="h4" component="h1">
+            Product Details
+          </Typography>
+        </Box>
         <Button
-          startIcon={<EditIcon />}
           variant="contained"
-          onClick={() => setOpenEditDialog(true)}
+          startIcon={<EditIcon />}
+          onClick={handleEdit}
         >
-          Edit Product
+          Edit
         </Button>
       </Box>
 
-      {product && (
-        <Paper elevation={2} sx={{ p: 3, mb: 4 }}>
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <Typography variant="h5" gutterBottom>
-                {product.name}
+      <Paper sx={{ p: 3 }}>
+        <Grid container spacing={3}>
+          <Grid item xs={12}>
+            <Typography variant="h5" gutterBottom>
+              {product.name}
+            </Typography>
+            <Box display="flex" alignItems="center" mb={2}>
+              <Typography variant="body2" color="text.secondary" sx={{ mr: 2 }}>
+                SKU: {product.id ? `PRD-${product.id}` : 'N/A'}
               </Typography>
-              <Typography variant="subtitle1" color="textSecondary">
-                SKU: {product.sku}
-              </Typography>
-              <Chip 
-                label={product.stock > 0 ? 'In Stock' : 'Out of Stock'} 
-                color={product.stock > 0 ? 'success' : 'error'} 
-                size="small"
-                sx={{ mt: 1 }}
-              />
-            </Grid>
+              {getStockStatusChip(product)}
+            </Box>
+            <Divider sx={{ my: 2 }} />
+          </Grid>
 
-            <Grid item xs={12}>
-              <Divider />
-            </Grid>
+          <Grid item xs={12} md={6}>
+            <Typography variant="subtitle1" gutterBottom fontWeight="bold">
+              Price
+            </Typography>
+            <Typography variant="h4" color="primary" gutterBottom>
+              Rp {(product.price || 0).toLocaleString()}
+            </Typography>
+          </Grid>
 
-            <Grid item xs={12} md={6}>
-              <Typography variant="subtitle2" color="textSecondary">
-                Price
-              </Typography>
-              <Typography variant="h6">
-                Rp {product.price?.toLocaleString()}
-              </Typography>
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <Typography variant="subtitle2" color="textSecondary">
-                Stock
-              </Typography>
-              <Typography variant="h6">
-                {product.stock} units
-              </Typography>
-            </Grid>
-
-            <Grid item xs={12}>
-              <Divider />
-            </Grid>
-
-            <Grid item xs={12}>
-              <Typography variant="subtitle2" color="textSecondary" gutterBottom>
-                Description
-              </Typography>
-              <Typography variant="body1" paragraph>
-                {product.description || 'No description available'}
-              </Typography>
+          <Grid item xs={12} md={6}>
+            <Typography variant="subtitle1" gutterBottom fontWeight="bold">
+              Stock Information
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={6}>
+                <Typography variant="body2" color="text.secondary">
+                  Current Stock
+                </Typography>
+                <Typography variant="h6">
+                  {product.stock} units
+                </Typography>
+              </Grid>
+              <Grid item xs={6}>
+                <Typography variant="body2" color="text.secondary">
+                  Minimum Stock
+                </Typography>
+                <Typography variant="h6">
+                  {product.minStock || 10} units
+                </Typography>
+              </Grid>
             </Grid>
           </Grid>
-        </Paper>
-      )}
 
-      <Dialog 
-        open={openEditDialog} 
-        onClose={() => setOpenEditDialog(false)}
-        maxWidth="md"
-        fullWidth
-      >
-        <Box p={3}>
-          <ProductForm
-            initialData={product}
-            onSubmit={handleUpdateProduct}
-            onCancel={() => setOpenEditDialog(false)}
-          />
-        </Box>
-      </Dialog>
+          <Grid item xs={12}>
+            <Divider sx={{ my: 2 }} />
+            <Typography variant="subtitle1" gutterBottom fontWeight="bold">
+              Description
+            </Typography>
+            <Typography variant="body1" paragraph>
+              {product.description || 'No description provided.'}
+            </Typography>
+          </Grid>
+        </Grid>
+      </Paper>
     </Box>
   );
 };

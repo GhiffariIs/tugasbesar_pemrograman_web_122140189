@@ -15,13 +15,14 @@ import {
   useTheme,
 } from '@mui/material';
 import {
-  Menu as MenuIcon,
   AccountCircle,
   Logout,
   Settings,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
+
+const drawerWidth = 240;
 
 const MainLayout = ({ children, user, setUser }) => {
   const theme = useTheme();
@@ -53,15 +54,9 @@ const MainLayout = ({ children, user, setUser }) => {
   };
 
   const handleLogout = () => {
-    // Clear token from localStorage
     localStorage.removeItem('token');
-    
-    // Clear user from context
     setUser(null);
-    
-    // Navigate to login
     navigate('/login');
-    
     handleClose();
   };
 
@@ -71,31 +66,27 @@ const MainLayout = ({ children, user, setUser }) => {
   };
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+    <Box sx={{ display: 'flex' }}>
       <AppBar 
-        position="fixed" 
+        position="fixed"
         sx={{
-          zIndex: (theme) => theme.zIndex.drawer + 1,
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.12)',
-          bgcolor: 'white',
+          width: { sm: `calc(100% - ${sidebarOpen ? drawerWidth : 0}px)` },
+          ml: { sm: `${sidebarOpen ? drawerWidth : 0}px` },
+          transition: theme.transitions.create(['margin', 'width'], {
+            easing: theme.transitions.easing.sharp,
+            duration: theme.transitions.duration.leavingScreen,
+          }),
+          bgcolor: 'background.paper',
           color: 'text.primary',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.12)',
         }}
       >
         <Toolbar>
-          <IconButton
-            color="inherit"
-            aria-label="open drawer"
-            edge="start"
-            onClick={handleDrawerToggle}
-            sx={{ mr: 2 }}
-          >
-            <MenuIcon />
-          </IconButton>
           <Typography
             variant="h6"
             noWrap
             component="div"
-            sx={{ flexGrow: 1, color: 'primary.main', fontWeight: 'bold' }}
+            sx={{ flexGrow: 1, fontWeight: 'bold' }}
           >
             Aturmation
           </Typography>
@@ -128,7 +119,9 @@ const MainLayout = ({ children, user, setUser }) => {
       <Sidebar
         open={sidebarOpen}
         onClose={() => isMobile && setSidebarOpen(false)}
+        onToggle={handleDrawerToggle}
         user={user}
+        drawerWidth={drawerWidth}
       />
       
       <Box
@@ -136,13 +129,13 @@ const MainLayout = ({ children, user, setUser }) => {
         sx={{
           flexGrow: 1,
           p: 3,
-          width: '100%',
-          marginLeft: isMobile ? 0 : sidebarOpen ? drawerWidth : 0,
-          marginTop: '64px', // AppBar height
+          width: { sm: `calc(100% - ${drawerWidth}px)` },
+          marginLeft: { sm: sidebarOpen ? 0 : `-${drawerWidth}px` },
           transition: theme.transitions.create(['margin', 'width'], {
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.leavingScreen,
           }),
+          mt: '64px', // AppBar height
         }}
       >
         {children}
@@ -200,8 +193,5 @@ const MainLayout = ({ children, user, setUser }) => {
     </Box>
   );
 };
-
-// Define drawer width constant
-const drawerWidth = 240;
 
 export default MainLayout;

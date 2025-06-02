@@ -4,14 +4,15 @@
  * @returns {string} Formatted date string
  */
 export const formatDate = (date) => {
-  if (!date) return '-';
-  
-  return new Date(date).toLocaleDateString('id-ID', {
+  if (!date) return '';
+  const options = {
     day: 'numeric',
-    month: 'long',
+    month: 'short',
     year: 'numeric',
-  });
-};
+  };
+  
+  return new Date(date).toLocaleDateString('id-ID', options);
+}
 
 /**
  * Format time to Indonesian locale format
@@ -45,19 +46,17 @@ export const formatDateTime = (date) => {
 };
 
 /**
- * Format currency to Indonesian Rupiah format
- * @param {number} amount - Amount to format
+ * Format currency to IDR
+ * @param {number} value - The value to format
  * @returns {string} Formatted currency string
  */
-export const formatCurrency = (amount) => {
-  if (amount === null || amount === undefined) return 'Rp 0';
-  
+export const formatCurrency = (value) => {
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',
     currency: 'IDR',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(amount);
+  }).format(value);
 };
 
 /**
@@ -68,18 +67,6 @@ export const formatCurrency = (amount) => {
 export const isValidEmail = (email) => {
   const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return re.test(email);
-};
-
-/**
- * Generate a random product code
- * @returns {string} Random product code
- */
-export const generateProductCode = () => {
-  const prefix = 'PRD';
-  const randomDigits = Math.floor(1000 + Math.random() * 9000); // 4-digit number
-  const timestamp = Date.now().toString().slice(-4); // Last 4 digits of timestamp
-  
-  return `${prefix}-${randomDigits}-${timestamp}`;
 };
 
 /**

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { Box, CssBaseline, ThemeProvider } from '@mui/material';
+import { Box, CssBaseline, ThemeProvider, CircularProgress } from '@mui/material';
 import { theme } from './theme';
 
 // Layouts
@@ -12,6 +12,8 @@ import RegisterPage from './pages/RegisterPage';
 import HomePage from './pages/HomePage';
 import ProductsPage from './pages/ProductsPage';
 import ProductDetailPage from './pages/ProductDetailPage';
+import AddProductPage from './pages/AddProductPage';
+import EditProductPage from './pages/EditProductPage';
 import UsersPage from './pages/UsersPage';
 import SettingsPage from './pages/SettingsPage';
 import NotFoundPage from './pages/NotFoundPage';
@@ -30,6 +32,8 @@ function App() {
         setUser(userData);
       } catch (error) {
         console.error('Error fetching user:', error);
+        // Clear token if authentication fails
+        localStorage.removeItem('token');
       } finally {
         setLoading(false);
       }
@@ -42,15 +46,36 @@ function App() {
     }
   }, []);
 
+  if (loading) {
+    return (
+      <Box 
+        sx={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          height: '100vh' 
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
+
   // Proteksi route
-  const ProtectedRoute = ({ children, roles }) => {
-    if (loading) return <div>Loading...</div>;
-    
+  const ProtectedRoute = ({ children }) => {
+    if (!user) {
+      return <Navigate to="/login" replace />;
+    }
+    return children;
+  };
+
+  // Admin route protection
+  const AdminRoute = ({ children }) => {
     if (!user) {
       return <Navigate to="/login" replace />;
     }
     
-    if (roles && !roles.includes(user.role)) {
+    if (user.role !== 'admin') {
       return <Navigate to="/" replace />;
     }
     
@@ -70,35 +95,51 @@ function App() {
           <Route path="/" element={
             <ProtectedRoute>
               <MainLayout user={user} setUser={setUser}>
-                <HomePage />
+                <HomePage user={user} />
               </MainLayout>
             </ProtectedRoute>
           } />
           
           {/* Product Routes */}
           <Route path="/products" element={
-            <ProtectedRoute roles={['admin', 'staff']}>
+            <ProtectedRoute>
               <MainLayout user={user} setUser={setUser}>
                 <ProductsPage />
               </MainLayout>
             </ProtectedRoute>
           } />
           
+          <Route path="/products/create" element={
+            <ProtectedRoute>
+              <MainLayout user={user} setUser={setUser}>
+                <AddProductPage />
+              </MainLayout>
+            </ProtectedRoute>
+          } />
+          
           <Route path="/products/:id" element={
-            <ProtectedRoute roles={['admin', 'staff']}>
+            <ProtectedRoute>
               <MainLayout user={user} setUser={setUser}>
                 <ProductDetailPage />
               </MainLayout>
             </ProtectedRoute>
           } />
           
+          <Route path="/products/:id/edit" element={
+            <ProtectedRoute>
+              <MainLayout user={user} setUser={setUser}>
+                <EditProductPage />
+              </MainLayout>
+            </ProtectedRoute>
+          } />
+          
           {/* User Management - admin only */}
           <Route path="/users" element={
-            <ProtectedRoute roles={['admin']}>
+            <AdminRoute>
               <MainLayout user={user} setUser={setUser}>
                 <UsersPage />
               </MainLayout>
-            </ProtectedRoute>
+            </AdminRoute>
           } />
           
           {/* Settings */}

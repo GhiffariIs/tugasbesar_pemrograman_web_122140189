@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Container,
@@ -13,90 +13,73 @@ import {
   Alert,
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
 import { authService } from '../services/services';
+import './LoginPage.css';
 
 const LoginPage = ({ setUser }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [formData, setFormData] = useState({
     username: '',
     password: '',
   });
-  const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [loginError, setLoginError] = useState('');
+  const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+
+  // Check for success message from registration
+  useEffect(() => {
+    if (location.state?.successMessage) {
+      setSuccessMessage(location.state.successMessage);
+      // Clear the state to prevent showing message on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    // Clear error when field is edited
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: '' }));
-    }
-    if (loginError) {
-      setLoginError('');
-    }
-  };
-
-  const validate = () => {
-    const newErrors = {};
-    if (!formData.username.trim()) {
-      newErrors.username = 'Username is required';
-    }
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    // Clear error when user edits the form
+    if (error) setError('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (validate()) {
-      setLoading(true);
-      try {
-        const { token, user } = await authService.login(
-          formData.username,
-          formData.password
-        );
-        
-        // Save token to localStorage
-        localStorage.setItem('token', token);
-        
-        // Update user context
-        setUser(user);
-        
-        // Redirect to home
+    if (!formData.username || !formData.password) {
+      setError('Please fill all required fields');
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const response = await authService.login(formData.username, formData.password);
+      
+      if (response.token && response.user) {
+        localStorage.setItem('token', response.token);
+        setUser(response.user);
         navigate('/');
-      } catch (error) {
-        console.error('Login failed:', error);
-        setLoginError(
-          error.response?.data?.message || 
-          'Login failed. Please check your credentials.'
-        );
-      } finally {
-        setLoading(false);
+      } else {
+        throw new Error('Invalid response from server');
       }
+    } catch (err) {
+      console.error('Login failed:', err);
+      setError(
+        err.response?.data?.message || 'Login failed. Please check your credentials.'
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleClickShowPassword = () => {
-    setShowPassword((show) => !show);
+    setShowPassword((prev) => !prev);
   };
 
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        minHeight: '100vh',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'background.default',
-        py: 2,
-      }}
-    >
+    <div className="login-container">
       <Container maxWidth="sm">
         <Paper
           elevation={3}
@@ -105,20 +88,15 @@ const LoginPage = ({ setUser }) => {
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
+            mx: 2,
           }}
         >
-          <Box
-            sx={{
-              width: '100%',
-              display: 'flex',
-              justifyContent: 'center',
-              mb: 3,
-            }}
-          >
-            <img
-              src="/logo.png"
-              alt="Aturmation Logo"
-              style={{ height: 60, objectFit: 'contain' }}
+          <Box sx={{ mb: 3 }}>
+            <img 
+              src="/aturmation.svg" 
+              alt="Aturmation Logo" 
+              className="logo"
+              style={{ height: 60, objectFit: 'contain' }} 
             />
           </Box>
 
@@ -126,17 +104,19 @@ const LoginPage = ({ setUser }) => {
             Sign In
           </Typography>
 
-          {loginError && (
-            <Alert severity="error" sx={{ width: '100%', mb: 2 }}>
-              {loginError}
+          {successMessage && (
+            <Alert severity="success" sx={{ width: '100%', mb: 2 }}>
+              {successMessage}
             </Alert>
           )}
 
-          <Box
-            component="form"
-            onSubmit={handleSubmit}
-            sx={{ width: '100%', mt: 1 }}
-          >
+          {error && (
+            <Alert severity="error" sx={{ width: '100%', mb: 2 }}>
+              {error}
+            </Alert>
+          )}
+
+          <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%', mt: 1 }}>
             <TextField
               margin="normal"
               required
@@ -148,8 +128,6 @@ const LoginPage = ({ setUser }) => {
               autoFocus
               value={formData.username}
               onChange={handleChange}
-              error={!!errors.username}
-              helperText={errors.username}
             />
             <TextField
               margin="normal"
@@ -157,28 +135,21 @@ const LoginPage = ({ setUser }) => {
               fullWidth
               name="password"
               label="Password"
-              type={showPassword ? 'text' : 'password'}
               id="password"
               autoComplete="current-password"
+              type={showPassword ? 'text' : 'password'}
               value={formData.password}
               onChange={handleChange}
-              error={!!errors.password}
-              helperText={errors.password}
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
-                    <IconButton
-                      aria-label="toggle password visibility"
-                      onClick={handleClickShowPassword}
-                      edge="end"
-                    >
+                    <IconButton onClick={handleClickShowPassword} edge="end">
                       {showPassword ? <VisibilityOff /> : <Visibility />}
                     </IconButton>
                   </InputAdornment>
                 ),
               }}
             />
-            
             <Button
               type="submit"
               fullWidth
@@ -188,7 +159,6 @@ const LoginPage = ({ setUser }) => {
             >
               {loading ? <CircularProgress size={24} /> : 'Sign In'}
             </Button>
-            
             <Box sx={{ textAlign: 'center' }}>
               <Typography variant="body2">
                 Don't have an account?{' '}
@@ -200,7 +170,7 @@ const LoginPage = ({ setUser }) => {
           </Box>
         </Paper>
       </Container>
-    </Box>
+    </div>
   );
 };
 
