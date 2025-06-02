@@ -1,32 +1,35 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Grid,
   TextField,
   Box,
   Button,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  FormHelperText,
   InputAdornment,
   CircularProgress,
-  Alert
+  Alert,
+  Typography,
+  useTheme,
+  useMediaQuery,
+  Paper,
+  FormHelperText,
 } from '@mui/material';
 import { generateProductCode } from '../../utils/formatters';
 
-const ProductForm = ({ product, categories, onSave, loading, isEdit = false }) => {
+const ProductForm = ({ product, onSave, loading, isEdit = false, onCancel }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  
   const [formData, setFormData] = useState({
     name: '',
     sku: '',
     price: '',
     stock: '',
-    minStock: '',
-    categoryId: '',
+    minStock: '10', // Default min stock value
     description: ''
   });
   
   const [errors, setErrors] = useState({});
+  const [formChanged, setFormChanged] = useState(false);
   
   useEffect(() => {
     if (product && isEdit) {
@@ -35,8 +38,7 @@ const ProductForm = ({ product, categories, onSave, loading, isEdit = false }) =
         sku: product.sku || '',
         price: product.price || '',
         stock: product.stock || '',
-        minStock: product.minStock || '',
-        categoryId: product.category?.id || '',
+        minStock: product.minStock || '10',
         description: product.description || ''
       });
     } else if (!isEdit) {
@@ -73,35 +75,33 @@ const ProductForm = ({ product, categories, onSave, loading, isEdit = false }) =
         [name]: ''
       }));
     }
+    
+    setFormChanged(true);
   };
   
   const validateForm = () => {
     const newErrors = {};
     
     if (!formData.name.trim()) {
-      newErrors.name = 'Nama produk tidak boleh kosong';
+      newErrors.name = 'Product name is required';
     }
     
     if (!formData.sku.trim()) {
-      newErrors.sku = 'SKU tidak boleh kosong';
+      newErrors.sku = 'SKU is required';
     }
     
     if (!formData.price) {
-      newErrors.price = 'Harga tidak boleh kosong';
+      newErrors.price = 'Price is required';
     } else if (formData.price <= 0) {
-      newErrors.price = 'Harga harus lebih dari 0';
+      newErrors.price = 'Price must be greater than 0';
     }
     
     if (formData.stock === '') {
-      newErrors.stock = 'Stok tidak boleh kosong';
+      newErrors.stock = 'Stock quantity is required';
     }
     
     if (formData.minStock === '') {
-      newErrors.minStock = 'Stok minimal tidak boleh kosong';
-    }
-    
-    if (!formData.categoryId) {
-      newErrors.categoryId = 'Kategori harus dipilih';
+      newErrors.minStock = 'Minimum stock is required';
     }
     
     setErrors(newErrors);
@@ -112,15 +112,11 @@ const ProductForm = ({ product, categories, onSave, loading, isEdit = false }) =
     e.preventDefault();
     
     if (validateForm()) {
-      // Transform category ID to match API expectations
-      const selectedCategory = categories.find(c => c.id === parseInt(formData.categoryId));
-      
       const productData = {
         ...formData,
         price: Number(formData.price),
         stock: Number(formData.stock),
         minStock: Number(formData.minStock),
-        category: selectedCategory
       };
       
       onSave(productData);
@@ -132,164 +128,160 @@ const ProductForm = ({ product, categories, onSave, loading, isEdit = false }) =
       ...prev,
       sku: generateProductCode()
     }));
+    setFormChanged(true);
   };
   
   return (
-    <Box component="form" onSubmit={handleSubmit} noValidate>
-      <Grid container spacing={2}>
-        <Grid item xs={12}>
-          <TextField
-            fullWidth
-            required
-            id="name"
-            name="name"
-            label="Nama Produk"
-            value={formData.name}
-            onChange={handleChange}
-            error={Boolean(errors.name)}
-            helperText={errors.name}
-            disabled={loading}
-            autoFocus={!isEdit}
-          />
-        </Grid>
+    <Paper elevation={0} sx={{ p: isMobile ? 2 : 3 }}>
+      <Box component="form" onSubmit={handleSubmit} noValidate>
+        <Typography variant="h6" mb={2}>
+          {isEdit ? 'Edit Product' : 'Add New Product'}
+        </Typography>
         
-        <Grid item xs={12} sm={6}>
-          <TextField
-            fullWidth
-            required
-            id="sku"
-            name="sku"
-            label="SKU / Kode Produk"
-            value={formData.sku}
-            onChange={handleChange}
-            error={Boolean(errors.sku)}
-            helperText={errors.sku}
-            disabled={loading || isEdit}
-            InputProps={{
-              endAdornment: !isEdit && (
-                <InputAdornment position="end">
-                  <Button
-                    onClick={generateNewSku}
-                    size="small"
-                    disabled={loading}
-                  >
-                    Generate
-                  </Button>
-                </InputAdornment>
-              )
-            }}
-          />
-        </Grid>
+        {Object.keys(errors).length > 0 && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            Please correct the errors below to continue
+          </Alert>
+        )}
         
-        <Grid item xs={12} sm={6}>
-          <FormControl fullWidth required error={Boolean(errors.categoryId)}>
-            <InputLabel id="category-label">Kategori</InputLabel>
-            <Select
-              labelId="category-label"
-              id="categoryId"
-              name="categoryId"
-              value={formData.categoryId}
-              label="Kategori"
+        <Grid container spacing={2}>
+          <Grid item xs={12}>
+            <TextField
+              fullWidth
+              required
+              id="name"
+              name="name"
+              label="Product Name"
+              value={formData.name}
+              onChange={handleChange}
+              error={Boolean(errors.name)}
+              helperText={errors.name}
+              disabled={loading}
+              autoFocus={!isEdit}
+            />
+          </Grid>
+          
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              required
+              id="sku"
+              name="sku"
+              label="SKU / Product Code"
+              value={formData.sku}
+              onChange={handleChange}
+              error={Boolean(errors.sku)}
+              helperText={errors.sku}
+              disabled={loading || isEdit}
+              InputProps={{
+                endAdornment: !isEdit && (
+                  <InputAdornment position="end">
+                    <Button
+                      onClick={generateNewSku}
+                      size="small"
+                      disabled={loading}
+                    >
+                      Generate
+                    </Button>
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </Grid>
+          
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              required
+              id="price"
+              name="price"
+              label="Price"
+              value={formData.price}
+              onChange={handleChange}
+              error={Boolean(errors.price)}
+              helperText={errors.price}
+              disabled={loading}
+              type="number"
+              InputProps={{
+                startAdornment: <InputAdornment position="start">Rp</InputAdornment>,
+              }}
+            />
+          </Grid>
+          
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              required
+              id="stock"
+              name="stock"
+              label="Stock"
+              value={formData.stock}
+              onChange={handleChange}
+              error={Boolean(errors.stock)}
+              helperText={errors.stock}
+              disabled={loading}
+              type="number"
+            />
+          </Grid>
+          
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              required
+              id="minStock"
+              name="minStock"
+              label="Minimum Stock"
+              value={formData.minStock}
+              onChange={handleChange}
+              error={Boolean(errors.minStock)}
+              helperText={errors.minStock || "Notification will appear when stock falls below this value"}
+              disabled={loading}
+              type="number"
+            />
+          </Grid>
+          
+          <Grid item xs={12}>
+            <TextField
+              fullWidth
+              id="description"
+              name="description"
+              label="Description"
+              value={formData.description}
               onChange={handleChange}
               disabled={loading}
+              multiline
+              rows={3}
+            />
+          </Grid>
+          
+          <Grid item xs={12} sx={{ mt: 2, display: 'flex', justifyContent: isMobile ? 'center' : 'flex-end', flexDirection: isMobile ? 'column' : 'row', gap: 2 }}>
+            <Button 
+              variant="outlined" 
+              onClick={onCancel} 
+              disabled={loading}
+              fullWidth={isMobile}
             >
-              {categories.map((category) => (
-                <MenuItem key={category.id} value={category.id}>
-                  {category.name}
-                </MenuItem>
-              ))}
-            </Select>
-            {errors.categoryId && (
-              <FormHelperText>{errors.categoryId}</FormHelperText>
-            )}
-          </FormControl>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              color="primary"
+              disabled={loading || (!formChanged && isEdit)}
+              fullWidth={isMobile}
+            >
+              {loading ? (
+                <CircularProgress size={24} />
+              ) : isEdit ? (
+                'Save Changes'
+              ) : (
+                'Add Product'
+              )}
+            </Button>
+          </Grid>
         </Grid>
-        
-        <Grid item xs={12} sm={4}>
-          <TextField
-            fullWidth
-            required
-            id="price"
-            name="price"
-            label="Harga"
-            value={formData.price}
-            onChange={handleChange}
-            error={Boolean(errors.price)}
-            helperText={errors.price}
-            disabled={loading}
-            type="number"
-            InputProps={{
-              startAdornment: <InputAdornment position="start">Rp</InputAdornment>,
-            }}
-          />
-        </Grid>
-        
-        <Grid item xs={12} sm={4}>
-          <TextField
-            fullWidth
-            required
-            id="stock"
-            name="stock"
-            label="Stok"
-            value={formData.stock}
-            onChange={handleChange}
-            error={Boolean(errors.stock)}
-            helperText={errors.stock}
-            disabled={loading}
-            type="number"
-          />
-        </Grid>
-        
-        <Grid item xs={12} sm={4}>
-          <TextField
-            fullWidth
-            required
-            id="minStock"
-            name="minStock"
-            label="Stok Minimal"
-            value={formData.minStock}
-            onChange={handleChange}
-            error={Boolean(errors.minStock)}
-            helperText={errors.minStock || "Notifikasi akan muncul jika stok di bawah nilai ini"}
-            disabled={loading}
-            type="number"
-          />
-        </Grid>
-        
-        <Grid item xs={12}>
-          <TextField
-            fullWidth
-            id="description"
-            name="description"
-            label="Deskripsi"
-            value={formData.description}
-            onChange={handleChange}
-            disabled={loading}
-            multiline
-            rows={3}
-          />
-        </Grid>
-        
-        <Grid item xs={12}>
-          <Button
-            type="submit"
-            variant="contained"
-            fullWidth
-            size="large"
-            disabled={loading}
-            sx={{ mt: 1 }}
-          >
-            {loading ? (
-              <CircularProgress size={24} />
-            ) : isEdit ? (
-              'Simpan Perubahan'
-            ) : (
-              'Tambah Produk'
-            )}
-          </Button>
-        </Grid>
-      </Grid>
-    </Box>
+      </Box>
+    </Paper>
   );
 };
 

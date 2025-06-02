@@ -1,156 +1,121 @@
-import { useEffect } from 'react';
-import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { Box, CircularProgress } from '@mui/material';
-import './App.css';
+import React, { useEffect, useState } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { Box, CssBaseline, ThemeProvider } from '@mui/material';
+import { theme } from './theme';
 
-// Contexts
-import { AuthProvider } from './contexts/AuthContext';
-import { NotificationProvider } from './contexts/NotificationContext';
-import { useAuth } from './contexts/AuthContext';
-
-// Layout components
+// Layouts
 import MainLayout from './components/layout/MainLayout';
 
-// Auth components
-import LoginPage from './components/auth/LoginPage';
-import RegisterPage from './components/auth/RegisterPage';
+// Pages
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import HomePage from './pages/HomePage';
+import ProductsPage from './pages/ProductsPage';
+import ProductDetailPage from './pages/ProductDetailPage';
+import UsersPage from './pages/UsersPage';
+import SettingsPage from './pages/SettingsPage';
+import NotFoundPage from './pages/NotFoundPage';
 
-// Main components 
-import Dashboard from './components/Dashboard';
-import ProductList from './components/products/ProductList';
-import CategoryList from './components/categories/CategoryList';
-import TransactionList from './components/transactions/TransactionList';
-import SettingsPage from './components/settings/SettingsPage';
-import LandingPage from './components/landing/LandingPage';
-import AboutPage from './components/landing/AboutPage';
+// Services
+import { authService } from './services/services';
 
-// Create theme
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#1976d2',
-    },
-    secondary: {
-      main: '#f50057',
-    },
-  },
-  typography: {
-    fontFamily: '"Poppins", "Roboto", "Helvetica", "Arial", sans-serif',
-  },
-  components: {
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          textTransform: 'none',
-          borderRadius: 8,
-        },
-      },
-    },
-  },
-});
-
-// Protected Route Component
-const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
+function App() {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!loading && !isAuthenticated) {
-      navigate('/login', { state: { from: location.pathname } });
+    const fetchUser = async () => {
+      try {
+        const userData = await authService.getCurrentUser();
+        setUser(userData);
+      } catch (error) {
+        console.error('Error fetching user:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (localStorage.getItem('token')) {
+      fetchUser();
+    } else {
+      setLoading(false);
     }
-  }, [isAuthenticated, loading, navigate, location]);
+  }, []);
 
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
+  // Proteksi route
+  const ProtectedRoute = ({ children, roles }) => {
+    if (loading) return <div>Loading...</div>;
+    
+    if (!user) {
+      return <Navigate to="/login" replace />;
+    }
+    
+    if (roles && !roles.includes(user.role)) {
+      return <Navigate to="/" replace />;
+    }
+    
+    return children;
+  };
 
-  return isAuthenticated ? children : null;
-};
-
-const App = () => {
   return (
     <ThemeProvider theme={theme}>
-      <AuthProvider>
-        <NotificationProvider>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/about" element={<AboutPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            
-            {/* Protected Routes */}
-            <Route path="/app" element={
-              <ProtectedRoute>
-                <MainLayout>
-                  <Dashboard />
-                </MainLayout>
-              </ProtectedRoute>
-            } />
-            
-            <Route path="/app/dashboard" element={
-              <ProtectedRoute>
-                <MainLayout>
-                  <Dashboard />
-                </MainLayout>
-              </ProtectedRoute>
-            } />
-            
-            <Route path="/app/products" element={
-              <ProtectedRoute>
-                <MainLayout>
-                  <ProductList />
-                </MainLayout>
-              </ProtectedRoute>
-            } />
-            
-            <Route path="/app/categories" element={
-              <ProtectedRoute>
-                <MainLayout>
-                  <CategoryList />
-                </MainLayout>
-              </ProtectedRoute>
-            } />
-            
-            <Route path="/app/transactions" element={
-              <ProtectedRoute>
-                <MainLayout>
-                  <TransactionList />
-                </MainLayout>
-              </ProtectedRoute>
-            } />
-            
-            <Route path="/app/settings" element={
-              <ProtectedRoute>
-                <MainLayout>
-                  <SettingsPage />
-                </MainLayout>
-              </ProtectedRoute>
-            } />
-            
-            {/* Redirect authenticated users to app dashboard */}
-            <Route 
-              path="/" 
-              element={
-                <ProtectedRoute>
-                  <Navigate to="/app/dashboard" replace />
-                </ProtectedRoute>
-              } 
-            />
-            
-            {/* Catch all - redirect to home */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </NotificationProvider>
-      </AuthProvider>
+      <CssBaseline />
+      <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+        <Routes>
+          {/* Auth Routes */}
+          <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage setUser={setUser} />} />
+          <Route path="/register" element={user ? <Navigate to="/" replace /> : <RegisterPage setUser={setUser} />} />
+          
+          {/* Main Routes */}
+          <Route path="/" element={
+            <ProtectedRoute>
+              <MainLayout user={user} setUser={setUser}>
+                <HomePage />
+              </MainLayout>
+            </ProtectedRoute>
+          } />
+          
+          {/* Product Routes */}
+          <Route path="/products" element={
+            <ProtectedRoute roles={['admin', 'staff']}>
+              <MainLayout user={user} setUser={setUser}>
+                <ProductsPage />
+              </MainLayout>
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/products/:id" element={
+            <ProtectedRoute roles={['admin', 'staff']}>
+              <MainLayout user={user} setUser={setUser}>
+                <ProductDetailPage />
+              </MainLayout>
+            </ProtectedRoute>
+          } />
+          
+          {/* User Management - admin only */}
+          <Route path="/users" element={
+            <ProtectedRoute roles={['admin']}>
+              <MainLayout user={user} setUser={setUser}>
+                <UsersPage />
+              </MainLayout>
+            </ProtectedRoute>
+          } />
+          
+          {/* Settings */}
+          <Route path="/settings" element={
+            <ProtectedRoute>
+              <MainLayout user={user} setUser={setUser}>
+                <SettingsPage user={user} />
+              </MainLayout>
+            </ProtectedRoute>
+          } />
+          
+          {/* 404 Page */}
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </Box>
     </ThemeProvider>
   );
-};
+}
 
 export default App;
