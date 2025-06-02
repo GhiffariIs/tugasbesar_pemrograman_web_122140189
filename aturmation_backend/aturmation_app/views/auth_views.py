@@ -1,6 +1,7 @@
+#views/auth_views.py
 from pyramid.view import view_config
 from pyramid.response import Response
-from pyramid.httpexceptions import HTTPBadRequest, HTTPCreated, HTTPOk, HTTPUnauthorized
+from pyramid.httpexceptions import HTTPBadRequest, HTTPCreated, HTTPOk, HTTPUnauthorized, HTTPForbidden, HTTPNotFound
 from sqlalchemy.exc import IntegrityError, DBAPIError # Tambahkan DBAPIError di sini
 
 from ..models.user import User, UserRole
@@ -32,6 +33,17 @@ def auth_register_view(request):
             print(f"[DEBUG] auth_register_view: Missing or empty fields: {', '.join(missing_fields)}")
 
             raise HTTPBadRequest(json_body={'message': f"Fields are required: {', '.join(missing_fields)}."}) # Pesan lebih spesifik
+            
+        # Cek username dan email duplikat sebelum mencoba insert
+        existing_user_by_username = request.dbsession.query(User).filter_by(username=username).first()
+        if existing_user_by_username:
+            print(f"[DEBUG] auth_register_view: Username '{username}' already exists.")
+            return HTTPBadRequest(json_body={'message': 'Username already exists.'})
+            
+        existing_user_by_email = request.dbsession.query(User).filter_by(email=email).first()
+        if existing_user_by_email:
+            print(f"[DEBUG] auth_register_view: Email '{email}' already exists.")
+            return HTTPBadRequest(json_body={'message': 'Email already exists.'})
 
         # ... (sisa kode untuk membuat User, dll.)
         # Jika sampai sini, berarti validasi di atas lolos

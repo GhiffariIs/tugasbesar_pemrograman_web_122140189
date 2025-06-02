@@ -1,4 +1,5 @@
-from sqlalchemy.orm import declarative_base # Baris BARU
+# aturmation_app/models/meta.py
+from sqlalchemy.orm import declarative_base # Pastikan menggunakan ini
 from sqlalchemy.schema import MetaData
 
 NAMING_CONVENTION = {
