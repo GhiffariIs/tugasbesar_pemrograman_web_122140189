@@ -1,139 +1,169 @@
+# tests/conftest.py
 import pytest
 from webtest import TestApp
-import os
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, scoped_session
-# from transaction import TestingTransactionManager
+from sqlalchemy import create_engine # Kita mungkin tidak perlu ini jika mengambil engine dari app
+from sqlalchemy.orm import sessionmaker
+from pyramid.request import Request
 
-# Impor Base dan semua model Anda
 from aturmation_app.models.meta import Base
-from aturmation_app.models import User, UserRole, Category, Product, Transaction, TransactionType 
+from aturmation_app.models import (
+    User, UserRole, Category, Product, Transaction, TransactionType
+    # DBSession global tidak perlu diimpor/dikonfigurasi dari sini jika app mengelola via factory
+)
 
 from aturmation_app import main as main_app_factory
 
 @pytest.fixture(scope='session')
 def test_settings_override():
+    """Override settings aplikasi khusus untuk lingkungan tes."""
     return {
-        'sqlalchemy.url': 'sqlite:///:memory:', 
-        'jwt.secret': 'test-jwt-secret-key',
+        'sqlalchemy.url': 'sqlite:///:memory:',
+        'jwt.secret': 'test-jwt-secret-for-pytest',
+        # Pastikan pyramid_tm di-include oleh main_app_factory Anda
     }
 
 @pytest.fixture(scope='session')
-def pyramid_app(test_settings_override):
+def pyramid_app_with_db_schema(test_settings_override):
+    """
+    Membuat instance aplikasi DAN memastikan database (tabel) dibuat
+    pada engine yang digunakan oleh aplikasi tersebut.
+    """
+    # 1. Buat instance aplikasi. Ini akan menjalankan main_app_factory,
+    #    yang akan memanggil config.include('.models'), yang kemudian
+    #    menjalankan 'includeme' di models/__init__.py.
+    #    'includeme' akan membuat engine berdasarkan 'sqlalchemy.url' dari test_settings_override
+    #    dan menyimpan session_factory yang terikat ke engine tersebut di registry.
     app = main_app_factory({}, **test_settings_override)
-    return app
 
-@pytest.fixture # Scope 'function' lebih aman untuk testapp jika ada state yang bisa berubah
-def testapp(pyramid_app):
-    return TestApp(pyramid_app)
+    # 2. Dapatkan engine yang dibuat dan digunakan oleh aplikasi dari registry.
+    #    Di models/__init__.py Anda, Anda menyimpan session_factory.
+    #    Engine terikat pada session_factory tersebut.
+    dbsession_factory_from_app = app.registry['dbsession_factory']
+    engine_used_by_app = dbsession_factory_from_app.kw['bind'] # Engine ada di factory.kw['bind']
+    
+    assert engine_used_by_app is not None, "Engine tidak ditemukan dari dbsession_factory aplikasi"
+    assert str(engine_used_by_app.url) == test_settings_override['sqlalchemy.url'], \
+        "Engine aplikasi tidak cocok dengan URL tes (SQLite in-memory)"
 
-@pytest.fixture(scope='function') 
-def db_session(pyramid_app, test_settings_override, request):
-    engine = create_engine(test_settings_override['sqlalchemy.url'])
-    Base.metadata.create_all(engine) 
-    Session = scoped_session(sessionmaker(bind=engine))
-    dbsession = Session()
+    # 3. Buat semua tabel pada engine yang digunakan oleh aplikasi.
+    Base.metadata.create_all(engine_used_by_app)
+    
+    yield app # Sediakan aplikasi yang sudah siap dengan DB
 
-    # Hapus bagian yang berkaitan dengan TestingTransactionManager
-    # tm = TestingTransactionManager() 
-    # request.addfinalizer(tm.abort) 
-    # dbsession.transaction_manager = tm 
+    # 4. Bersihkan setelah semua tes dalam sesi selesai
+    Base.metadata.drop_all(engine_used_by_app)
+    engine_used_by_app.dispose()
 
-    # Untuk pyramid_tm, sesi biasanya sudah terikat dengan transaction manager
-    # saat request dibuat. Untuk TestApp, ini ditangani oleh pyramid_tm.
-    # Jika Anda memanggil view secara langsung dengan dummy_request,
-    # Anda mungkin perlu `transaction.begin()` dan `transaction.commit()/abort()`
-    # atau gunakan `with transaction.manager:`
+@pytest.fixture
+def testapp(pyramid_app_with_db_schema):
+    """Menyediakan instance TestApp untuk melakukan request HTTP."""
+    return TestApp(pyramid_app_with_db_schema)
+
+@pytest.fixture(scope='function')
+def dbsession(pyramid_app_with_db_schema, request): # pyramid_app_with_db_schema untuk akses engine aplikasi
+    """
+    Menyediakan sesi DB terisolasi per fungsi tes untuk setup/verifikasi data manual.
+    Ini menggunakan engine yang sama dengan yang digunakan aplikasi.
+    """
+    # Dapatkan engine yang sama yang digunakan oleh aplikasi
+    dbsession_factory_from_app = pyramid_app_with_db_schema.registry['dbsession_factory']
+    engine = dbsession_factory_from_app.kw['bind']
+    
+    connection = engine.connect()
+    transaction = connection.begin() # Mulai transaksi DB untuk isolasi data tes
+    
+    SessionLocal = sessionmaker(bind=connection)
+    session = SessionLocal()
 
     def teardown():
-        dbsession.close() # Pastikan sesi ditutup
-        Base.metadata.drop_all(engine) 
-        engine.dispose()
+        session.close()
+        transaction.rollback() # Rollback semua perubahan yang dibuat di sesi ini
+        connection.close()
 
     request.addfinalizer(teardown)
-    return dbsession
-
-# ... (sisa fixtures seperti dummy_request, create_test_user, dll. tetap sama) ...
-@pytest.fixture
-def dummy_request(db_session, pyramid_app):
-    from pyramid.request import Request
-    request = Request.blank('/') 
-    request.dbsession = db_session
-    request.registry = pyramid_app.registry 
-    return request
+    return session
 
 @pytest.fixture
-def create_test_user(db_session):
-    def _create_test_user(name, username, email, password, role=UserRole.staff, save=True):
+def dummy_request(dbsession, pyramid_app_with_db_schema):
+    """Membuat objek request Pyramid dummy."""
+    req = Request.blank('/')
+    req.dbsession = dbsession 
+    req.registry = pyramid_app_with_db_schema.registry
+    return req
+
+# --- Fixture Factories untuk Membuat Data Tes ---
+# Pastikan mereka menggunakan 'dbsession' yang di-inject dan memanggil dbsession.commit()
+# agar data terlihat oleh request 'testapp' yang berjalan dalam transaksi terpisah.
+
+@pytest.fixture
+def create_test_user(dbsession):
+    def _create_test_user(name, username, email, password, role=UserRole.staff, commit_session=True):
         user = User(name=name, username=username, email=email, role=role)
         user.set_password(password)
-        if save:
-            db_session.add(user)
-            db_session.commit() 
+        dbsession.add(user)
+        if commit_session:
+            dbsession.commit() # Commit agar terlihat oleh request testapp
+        else:
+            dbsession.flush()
         return user
     return _create_test_user
 
 @pytest.fixture
-def create_test_category(db_session):
-    def _create_test_category(name, description=None, save=True):
+def create_test_category(dbsession):
+    def _create_test_category(name, description=None, commit_session=True):
         category = Category(name=name, description=description)
-        if save:
-            db_session.add(category)
-            db_session.commit()
+        dbsession.add(category)
+        if commit_session:
+            dbsession.commit()
+        else:
+            dbsession.flush()
         return category
     return _create_test_category
 
 @pytest.fixture
-def create_test_product(db_session, create_test_category): # Bisa inject fixture lain
-    def _create_test_product(name, sku, price, stock, min_stock, category_id=None, category_name=None, save=True):
-        if category_id is None and category_name:
-            # Buat kategori jika belum ada atau cari berdasarkan nama
-            cat = db_session.query(Category).filter_by(name=category_name).first()
+def create_test_product(dbsession, create_test_category):
+    def _create_test_product(name, sku, price, stock, min_stock, category_id=None, category_name=None, commit_session=True):
+        if category_id is None:
+            target_category_name = category_name if category_name else "Default Test Category Product"
+            cat = dbsession.query(Category).filter_by(name=target_category_name).first()
             if not cat:
-                cat = create_test_category(name=category_name, save=True)
+                cat = create_test_category(name=target_category_name, commit_session=True)
             category_id = cat.id
-        elif category_id is None:
-            # Buat kategori default jika tidak ada ID atau nama yang diberikan
-            cat = create_test_category(name="Default Test Category", save=True)
-            category_id = cat.id
-
+        
         product = Product(
-            name=name, sku=sku, price=price, stock=stock,
+            name=name, sku=sku, description=f"Desc for {name}", price=price, stock=stock,
             min_stock=min_stock, category_id=category_id
         )
-        if save:
-            db_session.add(product)
-            db_session.commit()
+        dbsession.add(product)
+        if commit_session:
+            dbsession.commit()
+        else:
+            dbsession.flush()
         return product
     return _create_test_product
 
-
 @pytest.fixture
-def auth_token_for_user(testapp, create_test_user, db_session):
-    def _auth_token_for_user(username, password, name="Test User For Token", email_prefix="tokenuser", role=UserRole.staff):
-        # Cek apakah user ada, jika tidak buat
-        user = db_session.query(User).filter_by(username=username).first()
-        if not user:
-            user = create_test_user(
-                name=name,
-                username=username,
-                email=f"{email_prefix}_{username}@example.com",
-                password=password,
-                role=role,
-                save=True
-            )
-        # db_session.commit() # Pastikan user tersimpan sebelum login
-
+def auth_token_for_user(testapp, create_test_user):
+    def _auth_token_for_user(username, password, name=None, email=None, role=UserRole.staff):
+        user_name = name if name else f"Test User {username}"
+        user_email = email if email else f"{username}_{role.value}_token_auto@example.com"
+        
+        # create_test_user dipanggil dengan commit_session=True
+        create_test_user(
+            name=user_name, username=username, email=user_email,
+            password=password, role=role, commit_session=True
+        )
+        
         login_payload = {'username': username, 'password': password}
-        # Perbolehkan 401 jika login memang sengaja diuji untuk gagal
-        res = testapp.post_json('/api/v1/auth/login', login_payload, expect_errors=True) 
+        res = testapp.post_json('/api/v1/auth/login', login_payload, expect_errors=True)
+        
         if res.status_code == 200:
-            return res.json.get('token')
-        elif res.status_code == 401:
-            print(f"Login failed for user {username} in auth_token_for_user: {res.json}")
+            token = res.json.get('token')
+            if token: return token
+            print(f"Login OK (200) but no token for {username}. Response: {res.json}")
             return None
-        else: # Error lain
-            print(f"Unexpected status {res.status_code} for user {username} in auth_token_for_user: {res.text}")
-            res.showbrowser() # Tampilkan detail error dari webtest
-            return None 
+        else:
+            response_text = res.json if res.content_type == 'application/json' else res.text
+            print(f"Login failed in auth_token_for_user for {username}. Status: {res.status_code}, Response: {response_text}")
+            return None
     return _auth_token_for_user

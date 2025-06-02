@@ -1,72 +1,98 @@
 # tests/test_auth_api.py
-import pytest # Tidak perlu jika tidak ada mark atau fixture khusus di file ini
+from aturmation_app.models import UserRole # Pastikan UserRole diimpor dari models Anda
 
-# Impor model jika perlu membuat data tes di dalam fungsi tes
-# from aturmation_app.models import User, UserRole
+# Fixtures seperti testapp, create_test_user, auth_token_for_user
+# akan otomatis tersedia jika didefinisikan dengan benar di tests/conftest.py.
 
-# Fixtures seperti testapp, db_session, create_test_user, auth_token_for_user
-# akan otomatis tersedia jika ada di conftest.py atau diimpor.
-
-def test_login_success(testapp, create_test_user, db_session):
-    """Test successful login and JWT token generation."""
-    # 1. Buat user tes di database
-    test_username = "logintestuser"
+def test_login_success(testapp, auth_token_for_user):
+    """Test successful login, JWT token generation, and then test /me."""
+    test_username = "loginsuccess_user_v2" # Gunakan username yang unik untuk tes ini
     test_password = "password123"
-    create_test_user(
-        name="Login Test User",
+    user_name = "Login Success User v2"
+    user_email = "loginsuccess_v2@example.com" # Pastikan email unik
+
+    # auth_token_for_user akan membuat user jika belum ada dan melakukan login
+    # serta melakukan commit agar user terlihat oleh testapp
+    jwt_token = auth_token_for_user(
         username=test_username,
-        email="login@example.com",
         password=test_password,
-        role="staff", # atau UserRole.staff
-        save=True # Pastikan user disimpan
+        name=user_name,
+        email=user_email,
+        role=UserRole.staff # Menggunakan UserRole Enum
     )
-    # db_session.commit() # Jika create_test_user tidak auto-commit
+    assert jwt_token is not None, "Token should be generated on successful login"
 
-    # 2. Lakukan request login
-    login_payload = {"username": test_username, "password": test_password}
-    res = testapp.post_json('/api/v1/auth/login', login_payload, status=200)
-
-    # 3. Verifikasi respons
-    assert 'token' in res.json
-    assert 'user' in res.json
-    assert res.json['user']['username'] == test_username
-    assert res.json['message'] == 'Login successful.'
-    
-    # Verifikasi token (opsional, tapi bagus)
-    # Anda bisa mencoba decode token di sini menggunakan JWT_SECRET tes jika mau,
-    # atau langsung gunakan token ini untuk tes endpoint terproteksi.
-    jwt_token = res.json['token']
-    
-    # 4. Uji endpoint /auth/me menggunakan token ini
+    # Uji endpoint /auth/me menggunakan token ini
     headers = {'Authorization': f'Bearer {jwt_token}'}
     me_res = testapp.get('/api/v1/auth/me', headers=headers, status=200)
-    assert me_res.json['username'] == test_username
-
-def test_login_failure_wrong_password(testapp, create_test_user, db_session):
-    """Test login failure with wrong password."""
-    test_username = "wrongpassuser"
-    test_password = "correctpassword"
-    create_test_user(
-        name="Wrong Pass User",
-        username=test_username,
-        email="wrongpass@example.com",
-        password=test_password,
-        role="staff",
-        save=True
-    )
-    # db_session.commit()
-
-    login_payload = {"username": test_username, "password": "wrongpassword"}
-    res = testapp.post_json('/api/v1/auth/login', login_payload, status=401) # Harapannya 401 Unauthorized
     
+    assert me_res.json['username'] == test_username
+    assert me_res.json['name'] == user_name
+    assert me_res.json['email'] == user_email
+    assert me_res.json['role'] == UserRole.staff.value # Verifikasi role value (string)
+
+def test_login_failure_wrong_password(testapp, create_test_user):
+    """Test login failure with wrong password."""
+    test_username = "wrongpass_user_v2" # Username unik
+    test_password = "correctpassword"
+    
+    # Buat user tes. create_test_user dari conftest.py akan commit jika diminta.
+    create_test_user(
+        name="Wrong Pass User v2",
+        username=test_username,
+        email="wrongpass_v2@example.com", # Pastikan email unik
+        password=test_password,
+        role=UserRole.staff,
+        commit_session=True # Penting agar user ini ada di DB untuk testapp
+    )
+
+    login_payload = {"username": test_username, "password": "thisisawrongpassword"}
+    res = testapp.post_json('/api/v1/auth/login', login_payload, status=401) 
+    
+    assert 'message' in res.json, "Response should contain a message key"
     assert res.json['message'] == 'Invalid username or password.'
 
 def test_login_failure_user_not_found(testapp):
     """Test login failure for a non-existent user."""
-    login_payload = {"username": "nonexistentuser", "password": "anypassword"}
+    login_payload = {"username": "iamverynonexistentuser", "password": "anypassword"}
     res = testapp.post_json('/api/v1/auth/login', login_payload, status=401)
     
+    assert 'message' in res.json, "Response should contain a message key"
     assert res.json['message'] == 'Invalid username or password.'
 
-# Tambahkan tes untuk /auth/register dan /auth/me dengan berbagai skenario
-# (sukses, duplikat, tanpa token, token salah, dll.)
+# TODO (Tambahkan tes-tes ini selanjutnya):
+# def test_register_user_success(testapp):
+#     """Test successful user registration."""
+#     # ... (payload untuk user baru yang unik) ...
+#     # res = testapp.post_json('/api/v1/auth/register', payload, status=201)
+#     # assert 'token' in res.json
+#     # assert 'user' in res.json
+#     # assert res.json['user']['username'] == payload['username']
+#     pass
+
+# def test_register_user_duplicate_username(testapp, create_test_user):
+#     """Test registration failure with duplicate username."""
+#     # ... (buat user dulu dengan create_test_user) ...
+#     # ... (coba registrasi lagi dengan username yang sama) ...
+#     # res = testapp.post_json('/api/v1/auth/register', payload, status=400)
+#     # assert 'Username already exists' in res.json['message']
+#     pass
+
+# def test_register_user_duplicate_email(testapp, create_test_user):
+#     """Test registration failure with duplicate email."""
+#     # ... (buat user dulu dengan create_test_user) ...
+#     # ... (coba registrasi lagi dengan email yang sama) ...
+#     # res = testapp.post_json('/api/v1/auth/register', payload, status=400)
+#     # assert 'Email already exists' in res.json['message']
+#     pass
+
+# def test_auth_me_no_token(testapp):
+#     """Test /auth/me endpoint without a token."""
+#     # res = testapp.get('/api/v1/auth/me', status=[401, 403]) # Bergantung pada bagaimana Pyramid menangani
+#     pass
+
+# def test_auth_me_invalid_token(testapp):
+#     """Test /auth/me endpoint with an invalid token."""
+#     # headers = {'Authorization': 'Bearer invalidtoken123'}
+#     # res = testapp.get('/api/v1/auth/me', headers=headers, status=[401, 403])
+#     pass
