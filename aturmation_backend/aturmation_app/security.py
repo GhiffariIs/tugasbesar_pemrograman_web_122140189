@@ -86,14 +86,11 @@ class RootACL(object):
         (Allow, Authenticated, 'view_authenticated'), # Untuk /auth/me
         (Allow, Authenticated, 'profile:edit'),     # Untuk update profil sendiri
 
-        # Permissions untuk PRODUCTS
+        # Permissions untuk PRODUCTS - semua user adalah admin
         (Allow, f'role:{UserRole.admin.value}', 'product:view'),
         (Allow, f'role:{UserRole.admin.value}', 'product:add'),
         (Allow, f'role:{UserRole.admin.value}', 'product:edit'),
-        (Allow, f'role:{UserRole.admin.value}', 'product:delete'),
-        
-        (Allow, f'role:{UserRole.staff.value}', 'product:view'),
-        (Allow, f'role:{UserRole.staff.value}', 'product:add')
+        (Allow, f'role:{UserRole.admin.value}', 'product:delete')
     ]
     def __init__(self, request): self.request = request
 

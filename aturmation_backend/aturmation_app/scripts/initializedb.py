@@ -38,8 +38,7 @@ def main(argv=sys.argv):
     Session = sessionmaker(bind=engine)
     dbsession = Session()
 
-    with transaction.manager:
-        # Buat Admin User
+    with transaction.manager:        # Buat Admin User jika belum ada
         admin = dbsession.query(User).filter_by(username='admin').first()
         if not admin:
             admin_user = User(
@@ -57,6 +56,13 @@ def main(argv=sys.argv):
             if not admin.email: admin.email = 'admin@example.com'
             if not admin.role: admin.role = UserRole.admin
             print("Admin user 'admin' already exists. Ensured fields.")
+        
+        # Ubah semua user untuk memiliki role admin
+        print("Converting all users to admin role...")
+        all_users = dbsession.query(User).all()
+        for user in all_users:
+            user.role = UserRole.admin
+            print(f"User '{user.username}' set as admin.")
 
         # Produk Contoh (tanpa kategori)
         if dbsession.query(Product).count() == 0:

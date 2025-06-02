@@ -13,7 +13,5 @@ def includeme(config):
     # Rute untuk Products
     config.add_route('api_products_collection', '/api/v1/products')
     config.add_route('api_product_detail', '/api/v1/products/{id}')
-    
-    # Hapus rute untuk Categories, Transactions, Dashboard kompleks
 
     config.scan('.views')

@@ -47,13 +47,12 @@ def auth_register_view(request):
 
         # ... (sisa kode untuk membuat User, dll.)
         # Jika sampai sini, berarti validasi di atas lolos
-        print("[DEBUG] auth_register_view: Basic validation passed. Proceeding to create user.")
-
+        print("[DEBUG] auth_register_view: Basic validation passed. Proceeding to create user.")        
         new_user = User(
             name=name,
             username=username,
             email=email,
-            role=UserRole.staff
+            role=UserRole.admin
         )
         new_user.set_password(password)
 

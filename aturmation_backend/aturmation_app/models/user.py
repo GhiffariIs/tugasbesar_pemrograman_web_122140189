@@ -6,7 +6,6 @@ import enum
 
 class UserRole(enum.Enum):
     admin = "admin"
-    staff = "staff"
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -17,7 +16,7 @@ class User(Base):
     username = Column(String(50), unique=True, nullable=False)
     email = Column(String(100), unique=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
-    role = Column(SAEnum(UserRole), nullable=False, default=UserRole.staff)
+    role = Column(SAEnum(UserRole), nullable=False, default=UserRole.admin)
     photo = Column(String(255), nullable=True) # Opsional, bisa dihapus jika ingin lebih sederhana
 
     def set_password(self, password):
