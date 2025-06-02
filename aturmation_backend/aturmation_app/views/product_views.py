@@ -11,6 +11,8 @@ from pyramid.httpexceptions import (
 )
 from sqlalchemy.exc import IntegrityError, DBAPIError
 from sqlalchemy.orm import joinedload
+from sqlalchemy import or_, and_, asc, desc
+import math
 
 from ..models.product import Product
 from ..models.category import Category
@@ -176,62 +178,116 @@ def create_product_view(request):
     route_name='api_products_collection',
     request_method='GET',
     renderer='json',
-    permission=PRODUCT_VIEW_PERMISSION
+    permission=PRODUCT_VIEW_PERMISSION # Asumsi permission PRODUCT_VIEW_PERMISSION sudah ada
 )
 def get_all_products_view(request):
     try:
-        print("[DEBUG] get_all_products_view: Fetching all products")
-        
-        # TODO (Enhancement Nanti): Implementasi filtering & pagination sesuai spek frontend
-        # (searchTerm, categoryFilter, stockStatusFilter, page, rowsPerPage)
-        
-        products_query = request.dbsession.query(Product).options(joinedload(Product.category)).order_by(Product.name)
-        products = products_query.all()
-        
-        return {
-            'products': [product.as_dict(include_category_details=True) for product in products],
-            'totalProducts': len(products) 
+        print("[DEBUG] get_all_products_view: Fetching all products with filters/pagination/sorting")
+        dbsession = request.dbsession
+
+        # --- Ambil Parameter Query ---
+        # Pagination
+        try:
+            page = int(request.params.get('page', 1))
+            rows_per_page = int(request.params.get('rowsPerPage', 10))
+            if page < 1: page = 1
+            if rows_per_page < 1: rows_per_page = 10
+            if rows_per_page > 100: rows_per_page = 100
+        except ValueError:
+            page = 1
+            rows_per_page = 10
+        offset = (page - 1) * rows_per_page
+
+        # Filtering
+        search_term = request.params.get('searchTerm')
+        category_filter_str = request.params.get('categoryFilter')
+        stock_status_filter = request.params.get('stockStatusFilter')
+
+        # === BARU: Sorting Parameters ===
+        sort_by = request.params.get('sort_by', 'name') # Default sort berdasarkan nama
+        sort_order_str = request.params.get('sort_order', 'asc').lower() # Default ascending
+
+        if sort_order_str not in ['asc', 'desc']:
+            sort_order_str = 'asc' # Default ke asc jika tidak valid
+
+        sort_order_func = asc if sort_order_str == 'asc' else desc
+        # ===============================
+
+        # --- Bangun Query Dasar ---
+        query = dbsession.query(Product).options(joinedload(Product.category))
+
+        # --- Terapkan Filter (kode filter yang sudah ada) ---
+        if search_term:
+            search_like = f"%{search_term}%"
+            query = query.filter(or_(Product.name.ilike(search_like), Product.sku.ilike(search_like)))
+            print(f"[DEBUG] Applied searchTerm filter: {search_term}")
+
+        if category_filter_str:
+            try:
+                category_id = int(category_filter_str)
+                query = query.filter(Product.category_id == category_id)
+                print(f"[DEBUG] Applied categoryFilter: {category_id}")
+            except ValueError:
+                print(f"[DEBUG] Invalid categoryFilter (not an int): {category_filter_str}")
+                pass 
+
+        if stock_status_filter and stock_status_filter != 'all':
+            if stock_status_filter == 'inStock':
+                query = query.filter(Product.stock > Product.min_stock)
+            elif stock_status_filter == 'lowStock':
+                query = query.filter(and_(Product.stock <= Product.min_stock, Product.stock > 0))
+            elif stock_status_filter == 'outOfStock':
+                query = query.filter(Product.stock == 0)
+            print(f"[DEBUG] Applied stockStatusFilter: {stock_status_filter}")
+
+        # --- Dapatkan Total Item Setelah Filter ---
+        total_products = query.count()
+        print(f"[DEBUG] Total products after filtering: {total_products}")
+
+        # === BARU: Terapkan Sorting ===
+        # Definisikan kolom yang diizinkan untuk di-sort dan mapping ke atribut model
+        allowed_sort_fields = {
+            'name': Product.name,
+            'price': Product.price,
+            'stock': Product.stock,
+            'created_at': Product.created_at,
+            'updated_at': Product.updated_at,
+            'sku': Product.sku
+            # Tambahkan field lain jika perlu, misal category_name (membutuhkan join atau alias)
         }
+
+        sort_column = allowed_sort_fields.get(sort_by)
+        if sort_column is None:
+            sort_column = Product.name # Default jika sort_by tidak valid
+            print(f"[DEBUG] Invalid sort_by value '{sort_by}', defaulting to 'name'")
+
+        query = query.order_by(sort_order_func(sort_column))
+        print(f"[DEBUG] Applied sorting: by '{sort_by}' order '{sort_order_str}'")
+        # ============================
+
+        # --- Terapkan Pagination ke Query ---
+        products = query.offset(offset).limit(rows_per_page).all()
+
+        total_pages = math.ceil(total_products / rows_per_page) if total_products > 0 else 1
+
+        response_data = {
+            'products': [product.as_dict(include_category_details=True) for product in products],
+            'totalProducts': total_products,
+            'currentPage': page,
+            'totalPages': total_pages,
+            'rowsPerPage': rows_per_page,
+            'sortBy': sort_by, # Kembalikan parameter sort yang digunakan
+            'sortOrder': sort_order_str # Kembalikan parameter order yang digunakan
+        }
+
+        print(f"[DEBUG] get_all_products_view: Returning {len(products)} products. Page: {page}, TotalPages: {total_pages}, Sort: {sort_by} {sort_order_str}")
+        return HTTPOk(json_body=response_data)
+
     except Exception as e: 
         print(f"[DEBUG] get_all_products_view: Unexpected error - {type(e).__name__}: {e}")
         import traceback
         traceback.print_exc()
-        return HTTPBadRequest(json_body={'message': f"Error fetching products: {e}"})
-
-
-@view_config(
-    route_name='api_product_detail', 
-    request_method='GET',
-    renderer='json',
-    permission=PRODUCT_VIEW_PERMISSION
-)
-def get_product_view(request):
-    try:
-        product_id_str = request.matchdict.get('id')
-        print(f"[DEBUG] get_product_view: Received product_id_str from matchdict: '{product_id_str}'")
-
-        if product_id_str is None:
-            raise HTTPNotFound(json_body={'message': 'Product ID missing in URL.'})
-        try:
-            product_id = int(product_id_str)
-        except ValueError:
-            raise HTTPBadRequest(json_body={'message': f"Invalid product ID format: '{product_id_str}'. ID must be an integer."})
-
-        print(f"[DEBUG] get_product_view: Fetching product with integer ID {product_id}")
-        product = request.dbsession.query(Product).options(joinedload(Product.category)).get(product_id)
-        
-        if not product:
-            print(f"[DEBUG] get_product_view: Product ID {product_id} not found")
-            raise HTTPNotFound(json_body={'message': 'Product not found.'})
-        
-        return {'product': product.as_dict(include_category_details=True)}
-    except (HTTPBadRequest, HTTPNotFound) as e: # Tangkap dan kembalikan HTTP exceptions secara langsung
-        return e
-    except Exception as e: # Tangkap error tak terduga lainnya
-        print(f"[DEBUG] get_product_view: Unexpected error - {type(e).__name__}: {e}")
-        import traceback
-        traceback.print_exc()
-        return HTTPBadRequest(json_body={'message': f"Error fetching product details: {e}"})
+        return HTTPBadRequest(json_body={'message': f"Error fetching products: {e}", 'products': [], 'totalProducts': 0})
 
 
 @view_config(

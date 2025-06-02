@@ -2,7 +2,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 from zope.sqlalchemy import register
 
-from .user import User
+from .user import User, UserRole
 from .category import Category
 from .product import Product
 from .transaction import Transaction, TransactionType
