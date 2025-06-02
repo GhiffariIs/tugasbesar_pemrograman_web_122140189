@@ -1,8 +1,10 @@
 # aturmation_app/views/product_views.py
 from pyramid.view import view_config
+from pyramid.response import Response
 from pyramid.httpexceptions import (
     HTTPCreated, HTTPOk, HTTPNotFound, HTTPBadRequest, HTTPNoContent
 )
+import sqlalchemy
 from sqlalchemy.exc import IntegrityError, DBAPIError
 from sqlalchemy import or_, and_, asc, desc # Untuk filter & sort
 import math
@@ -187,3 +189,204 @@ def delete_product_view(request):
         if "foreign key constraint" in str(e).lower():
              return HTTPBadRequest(json_body={'message': 'Cannot delete product: It is currently in use.'})
         return HTTPBadRequest(json_body={'message': f"Error deleting product: {e}"})
+
+@view_config(route_name='api_products_collection', request_method='GET', renderer='json')
+def get_products(request):
+    """Get all products with pagination"""
+    try:
+        page = int(request.params.get('page', 1))
+        per_page = int(request.params.get('per_page', 10))
+    except (ValueError, TypeError):
+        page = 1
+        per_page = 10
+    
+    if page < 1:
+        page = 1
+    if per_page < 1:
+        per_page = 10
+    
+    query = request.dbsession.query(Product)
+    
+    # Apply ordering
+    query = query.order_by(desc(Product.created_at))
+    
+    # Count total items
+    total_items = query.count()
+    
+    # Apply pagination
+    offset = (page - 1) * per_page
+    products = query.limit(per_page).offset(offset).all()
+    
+    total_pages = (total_items + per_page - 1) // per_page if total_items > 0 else 0
+    
+    return Response(json_body={
+        'status': 'success',
+        'products': [p.to_dict() for p in products],
+        'pagination': {
+            'total_items': total_items,
+            'page': page,
+            'per_page': per_page,
+            'total_pages': total_pages
+        }
+    })
+
+@view_config(route_name='api_product_detail', request_method='GET', renderer='json')
+def get_product(request):
+    """Get a single product by ID"""
+    product_id = request.matchdict['id']
+    product = request.dbsession.query(Product).filter_by(id=product_id).first()
+    
+    if not product:
+        return HTTPNotFound(json_body={
+            'status': 'error',
+            'message': 'Product not found'
+        })
+    
+    return Response(json_body={
+        'status': 'success',
+        'product': product.to_dict()
+    })
+
+@view_config(route_name='api_products_collection', request_method='POST', 
+             permission='create', renderer='json')
+def create_product(request):
+    """Create a new product (now any authenticated user can do it)"""
+    try:
+        data = request.json_body
+    except ValueError:
+        return Response(json_body={'status': 'error', 'message': 'Invalid JSON'}, status=400)
+    
+    name = data.get('name')
+    sku = data.get('sku')
+    description = data.get('description')
+    price = data.get('price')
+    stock = data.get('stock', 0)
+    
+    # Basic validation
+    errors = {}
+    if not name:
+        errors['name'] = 'Name is required'
+    if not sku:
+        errors['sku'] = 'SKU is required'
+    if not price:
+        errors['price'] = 'Price is required'
+    
+    if errors:
+        return Response(json_body={
+            'status': 'error',
+            'message': 'Validation failed',
+            'errors': errors
+        }, status=400)
+    
+    try:
+        # Create a new product
+        product = Product(
+            name=name,
+            sku=sku,
+            description=description,
+            price=price,
+            stock=stock
+        )
+        
+        request.dbsession.add(product)
+        request.dbsession.flush()
+        
+        return Response(json_body={
+            'status': 'success',
+            'message': 'Product created successfully',
+            'product': product.to_dict()
+        }, status=201)
+    except sqlalchemy.exc.IntegrityError as e:
+        request.dbsession.rollback()
+        
+        # Check if error is due to duplicate SKU
+        if 'unique constraint' in str(e).lower() and 'sku' in str(e).lower():
+            return Response(json_body={
+                'status': 'error',
+                'message': 'A product with this SKU already exists'
+            }, status=400)
+        
+        return Response(json_body={
+            'status': 'error',
+            'message': 'Database error occurred'
+        }, status=500)
+
+@view_config(route_name='api_product_detail', request_method='PUT', 
+             permission='edit', renderer='json')
+def update_product(request):
+    """Update a product (now any authenticated user can do it)"""
+    product_id = request.matchdict['id']
+    product = request.dbsession.query(Product).filter_by(id=product_id).first()
+    
+    if not product:
+        return HTTPNotFound(json_body={
+            'status': 'error',
+            'message': 'Product not found'
+        })
+    
+    try:
+        data = request.json_body
+    except ValueError:
+        return Response(json_body={'status': 'error', 'message': 'Invalid JSON'}, status=400)
+    
+    # Update fields if provided
+    if 'name' in data:
+        product.name = data['name']
+    if 'sku' in data:
+        product.sku = data['sku']
+    if 'description' in data:
+        product.description = data['description']
+    if 'price' in data:
+        product.price = data['price']
+    if 'stock' in data:
+        product.stock = data['stock']
+    
+    try:
+        request.dbsession.flush()
+        
+        return Response(json_body={
+            'status': 'success',
+            'message': 'Product updated successfully',
+            'product': product.to_dict()
+        })
+    except sqlalchemy.exc.IntegrityError as e:
+        request.dbsession.rollback()
+        
+        # Check if error is due to duplicate SKU
+        if 'unique constraint' in str(e).lower() and 'sku' in str(e).lower():
+            return Response(json_body={
+                'status': 'error',
+                'message': 'A product with this SKU already exists'
+            }, status=400)
+        
+        return Response(json_body={
+            'status': 'error',
+            'message': 'Database error occurred'
+        }, status=500)
+
+@view_config(route_name='api_product_detail', request_method='DELETE', 
+             permission='delete', renderer='json')
+def delete_product(request):
+    """Delete a product (now any authenticated user can do it)"""
+    product_id = request.matchdict['id']
+    product = request.dbsession.query(Product).filter_by(id=product_id).first()
+    
+    if not product:
+        return HTTPNotFound(json_body={
+            'status': 'error',
+            'message': 'Product not found'
+        })
+    
+    try:
+        request.dbsession.delete(product)
+        
+        return Response(json_body={
+            'status': 'success',
+            'message': 'Product deleted successfully'
+        })
+    except:
+        request.dbsession.rollback()
+        return Response(json_body={
+            'status': 'error',
+            'message': 'Failed to delete the product'
+        }, status=500)
